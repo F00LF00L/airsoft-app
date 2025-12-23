@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Airsoft HQ</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <style>
+        body { 
+            background-color: #000; 
+            color: #fff; 
+            font-family: system-ui, sans-serif;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            user-select: none;
+        }
+        .status-bar { background: rgba(255,255,255,0.03); border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .score-box { background: linear-gradient(180deg, #111 0%, #000 100%); border: 1px solid #222; }
+        .p-btn { 
+            background: #111; 
+            border: 1px solid #222; 
+            border-radius: 1rem; 
+            height: 75px; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .is-out { background: #450a0a !important; border-color: #f87171 !important; color: #f87171; }
+        .no-scroll::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body>
+
+    <!-- Header / Status -->
+    <div class="status-bar px-4 py-3 flex justify-between items-center">
+        <div class="flex items-center gap-2">
+            <div id="dot" class="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse"></div>
+            <span id="stText" class="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Connecting</span>
+        </div>
+        <div id="roomTag" class="text-[10px] font-mono text-zinc-600"></div>
+    </div>
+
+    <!-- Main Scoreboard -->
+    <div class="p-4">
+        <div class="score-box rounded-[2rem] p-6 flex justify-between items-center shadow-xl">
+            <div class="text-center">
+                <div class="text-[10px] text-blue-500 font-black mb-1">ALPHA</div>
+                <div id="scA" class="text-5xl font-black italic">0</div>
+            </div>
+
+            <div class="flex flex-col items-center">
+                <div id="timer" class="text-3xl font-mono font-bold mb-3">10:00</div>
+                <button id="playBtn" class="w-12 h-12 bg-white text-black rounded-full flex items-center justify-center active:scale-90 transition-transform">
+                    <svg id="pIcon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                </button>
+            </div>
+
+            <div class="text-center">
+                <div class="text-[10px] text-orange-500 font-black mb-1">BRAVO</div>
+                <div id="scB" class="text-5xl font-black italic">0</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Players Grid -->
+    <div class="flex-1 overflow-y-auto px-4 space-y-6 no-scroll pb-20">
+        <section>
+            <h2 class="text-[9px] font-black text-zinc-600 uppercase mb-2 mr-1">Team Alpha</h2>
+            <div id="gA" class="grid grid-cols-2 gap-2"></div>
+        </section>
+        <section>
+            <h2 class="text-[9px] font-black text-zinc-600 uppercase mb-2 mr-1">Team Bravo</h2>
+            <div id="gB" class="grid grid-cols-2 gap-2"></div>
+        </section>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDhNuddcNUbKdvJoKvtkJtca4M4OPwabug",
+            authDomain: "airsoft-hq-e9bcd.firebaseapp.com",
+            projectId: "airsoft-hq-e9bcd",
+            storageBucket: "airsoft-hq-e9bcd.firebasestorage.app",
+            messagingSenderId: "645394629676",
+            appId: "1:645394629676:web:1fb768d52a0152b125fd89"
+        };
+
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        let state = {
+            run: false, time: 600, sA: 0, sB: 0,
+            tA: Array(4).fill(0).map(()=>({end:0})),
+            tB: Array(4).fill(0).map(()=>({end:0})),
+            ts: Date.now()
+        };
+
+        const room = new URLSearchParams(window.location.search).get('r') || 'field_1';
+        document.getElementById('roomTag').innerText = "ROOM: " + room;
+
+        async function init() {
+            try {
+                await auth.signInAnonymously();
+                // שימוש בנתיב חדש ונקי לגמרי בשם matches_v5
+                const ref = db.collection('matches_v5').doc(room);
+                
+                ref.onSnapshot(d => {
+                    if(d.exists) {
+                        const data = d.data();
+                        if(data.ts > state.ts || data.run !== state.run) state = data;
+                    } else { ref.set(state); }
+                    
+                    document.getElementById('dot').className = "w-2.5 h-2.5 rounded-full bg-green-500 shadow-[0_0_8px_#22c55e]";
+                    document.getElementById('stText').innerText = "Live";
+                    render();
+                }, e => {
+                    document.getElementById('stText').innerText = "Error - check rules";
+                });
+            } catch(e) { document.getElementById('stText').innerText = "Auth Fail"; }
+        }
+
+        function render() {
+            document.getElementById('scA').innerText = state.sA;
+            document.getElementById('scB').innerText = state.sB;
+            const m = Math.floor(state.time/60), s = state.time%60;
+            document.getElementById('timer').innerText = m + ":" + (s<10?'0':'') + s;
+            document.getElementById('pIcon').innerHTML = state.run ? '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>' : '<path d="M8 5v14l11-7z"/>';
+            
+            draw('gA', state.tA, 'A');
+            draw('gB', state.tB, 'B');
+        }
+
+        function draw(id, list, team) {
+            const g = document.getElementById(id); g.innerHTML = '';
+            list.forEach((p, i) => {
+                const isOut = p.end > Date.now();
+                const b = document.createElement('button');
+                b.className = `p-btn ${isOut?'is-out':''} ${!state.run?'opacity-20':''}`;
+                
+                if(isOut) {
+                    const r = Math.ceil((p.end - Date.now())/1000);
+                    b.innerHTML = `<span class="text-2xl font-black italic">${r}</span>`;
+                } else {
+                    const c = team === 'A' ? 'text-blue-500' : 'text-orange-500';
+                    b.innerHTML = `<span class="${c} font-black text-lg">${team}${i+1}</span>`;
+                }
+
+                b.onclick = () => {
+                    if(!state.run || isOut) return;
+                    p.end = Date.now() + (30 * 1000);
+                    if(team === 'A') state.sB++; else state.sA++;
+                    save();
+                };
+                g.appendChild(b);
+            });
+        }
+
+        function save() {
+            state.ts = Date.now();
+            render();
+            db.collection('matches_v5').doc(room).set(state).catch(()=>{});
+        }
+
+        document.getElementById('playBtn').onclick = () => { state.run = !state.run; save(); };
+
+        setInterval(() => {
+            if(state.run && state.time > 0) {
+                state.time--;
+                render();
+                if(state.time % 10 === 0) save();
+            }
+        }, 1000);
+
+        init();
+    </script>
+</body>
+</html>
+
