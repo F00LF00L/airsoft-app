@@ -3,122 +3,136 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Airsoft HQ Pro - Admin Lock</title>
+    <title>Airsoft HQ Pro - Ultimate</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <style>
         body { background: #050505; color: #eee; font-family: system-ui, sans-serif; height: 100vh; overflow: hidden; }
-        .glass { background: rgba(20,20,20,0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.05); }
-        .player-card { height: 85px; border-radius: 1.25rem; transition: all 0.2s; border: 2px solid transparent; position: relative; }
-        .is-dead { background: #450a0a !important; border-color: #ef4444 !important; }
-        .is-me { border-color: #fff !important; box-shadow: 0 0 15px rgba(255,255,255,0.15); }
-        .occupied { background: #111; }
-        .empty { background: rgba(255,255,255,0.02); border: 1px dashed rgba(255,255,255,0.1); }
+        .glass { background: rgba(20,20,20,0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); }
+        .player-card { height: 90px; border-radius: 1.5rem; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); border: 2px solid transparent; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; }
+        .is-dead { background: #450a0a !important; border-color: #ef4444 !important; transform: scale(0.98); }
+        .is-me { border-color: #fff !important; box-shadow: 0 0 20px rgba(255,255,255,0.1); }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .modal-bg { background: rgba(0,0,0,0.9); backdrop-filter: blur(15px); }
-        .admin-only { display: none; } /* מוסתר כברירת מחדל */
-        .is-admin .admin-only { display: flex; } /* מוצג רק לאדמין */
+        .modal-bg { background: rgba(0,0,0,0.92); backdrop-filter: blur(20px); z-index: 100; }
+        .admin-only { display: none !important; }
+        .is-admin .admin-only { display: flex !important; }
+        .score-badge { font-variant-numeric: tabular-nums; }
+        @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+        .respawn-active { animation: pulse-red 2s infinite; }
     </style>
 </head>
 <body class="flex flex-col">
 
     <!-- Login screen -->
-    <div id="loginScreen" class="fixed inset-0 z-50 modal-bg flex items-center justify-center p-6">
-        <div class="w-full max-w-md glass p-8 rounded-[2.5rem] text-center">
-            <h2 class="text-3xl font-black mb-2 italic uppercase">Identity</h2>
-            <div class="space-y-4 mt-6">
-                <input id="inputName" type="text" placeholder="הכנס כינוי..." maxlength="12" 
-                    class="w-full bg-zinc-900 border border-zinc-800 p-5 rounded-2xl text-center text-xl font-bold focus:outline-none focus:border-blue-500">
+    <div id="loginScreen" class="fixed inset-0 modal-bg flex items-center justify-center p-6">
+        <div class="w-full max-w-md glass p-10 rounded-[3rem] text-center border-white/10">
+            <h2 class="text-4xl font-black mb-2 italic tracking-tighter uppercase">Join Battle</h2>
+            <p class="text-zinc-500 text-sm mb-8">הכנס כינוי ובחר צד</p>
+            <div class="space-y-4">
+                <input id="inputName" type="text" placeholder="כינוי שחקן..." maxlength="12" 
+                    class="w-full bg-zinc-900 border border-zinc-800 p-5 rounded-2xl text-center text-xl font-bold focus:ring-2 ring-blue-500 outline-none">
                 <div class="grid grid-cols-2 gap-4">
-                    <button onclick="pickTeam('A')" id="pickA" class="p-5 rounded-2xl border-2 border-zinc-800 font-black text-blue-500">ALPHA</button>
-                    <button onclick="pickTeam('B')" id="pickB" class="p-5 rounded-2xl border-2 border-zinc-800 font-black text-orange-500">BRAVO</button>
+                    <button onclick="pickTeam('A')" id="pickA" class="p-5 rounded-2xl border-2 border-zinc-800 font-black text-blue-500 transition-all">ALPHA</button>
+                    <button onclick="pickTeam('B')" id="pickB" class="p-5 rounded-2xl border-2 border-zinc-800 font-black text-orange-500 transition-all">BRAVO</button>
                 </div>
-                <button onclick="confirmEntry()" class="w-full bg-white text-black font-black p-5 rounded-2xl shadow-lg mt-4 text-lg">Join Battle</button>
+                <button onclick="confirmEntry()" class="w-full bg-white text-black font-black p-5 rounded-2xl shadow-xl mt-4 active:scale-95 transition-transform text-xl">DEPLOY</button>
             </div>
         </div>
     </div>
 
-    <!-- Settings panel (Admin Only) -->
-    <div id="settingsPanel" class="fixed inset-0 z-40 modal-bg hidden flex items-center justify-center p-6">
+    <!-- History Panel -->
+    <div id="historyPanel" class="fixed inset-0 modal-bg hidden flex flex-col p-6 overflow-y-auto no-scrollbar">
+        <div class="flex justify-between items-center mb-8">
+            <h2 class="text-3xl font-black italic">BATTLE LOG</h2>
+            <button onclick="toggleHistory()" class="w-12 h-12 glass rounded-full flex items-center justify-center font-bold text-xl">×</button>
+        </div>
+        <div id="historyList" class="space-y-4">
+            <!-- Rounds will be injected here -->
+        </div>
+        <div id="noHistory" class="text-center text-zinc-600 mt-20 hidden">אין תיעוד לסיבובים קודמים</div>
+    </div>
+
+    <!-- Create Room Dialog -->
+    <div id="roomDialog" class="fixed inset-0 modal-bg hidden flex items-center justify-center p-6">
         <div class="w-full max-w-sm glass p-8 rounded-[2.5rem]">
-            <h2 class="text-xl font-black mb-6 text-center italic">Match Settings</h2>
-            <div class="space-y-6">
-                <div>
-                    <label class="text-[10px] text-zinc-500 font-bold block mb-2 uppercase">Game Duration (Min)</label>
-                    <input id="inGameTime" type="number" class="w-full bg-zinc-900 p-4 rounded-xl text-center text-xl font-bold text-white">
-                </div>
-                <div>
-                    <label class="text-[10px] text-zinc-500 font-bold block mb-2 uppercase">Respawn Delay (Sec)</label>
-                    <input id="inRespTime" type="number" class="w-full bg-zinc-900 p-4 rounded-xl text-center text-xl font-bold text-white">
-                </div>
-                <div class="flex gap-2 pt-4">
-                    <button onclick="hideSettings()" class="flex-1 bg-zinc-800 p-4 rounded-xl font-bold">Cancel</button>
-                    <button onclick="saveSettings()" class="flex-1 bg-blue-600 p-4 rounded-xl font-bold">Apply</button>
-                </div>
+            <h3 class="text-xl font-black mb-6 text-center">צור חדר חדש</h3>
+            <input id="newRoomName" type="text" placeholder="שם החדר (באנגלית)..." class="w-full bg-zinc-900 p-5 rounded-2xl text-center mb-6 font-bold uppercase">
+            <div class="flex gap-3">
+                <button onclick="document.getElementById('roomDialog').classList.add('hidden')" class="flex-1 p-4 bg-zinc-800 rounded-xl font-bold">ביטול</button>
+                <button onclick="createNewRoom()" class="flex-1 p-4 bg-blue-600 rounded-xl font-bold">צור ועבור</button>
             </div>
         </div>
     </div>
 
-    <!-- Top Bar -->
-    <header class="p-4 flex justify-between items-center border-b border-white/5">
+    <!-- Header -->
+    <header class="p-5 flex justify-between items-center bg-black/40 border-b border-white/5">
         <div class="flex items-center gap-3">
-            <div id="connStatus" class="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse"></div>
+            <div id="connStatus" class="w-2.5 h-2.5 rounded-full bg-red-600"></div>
             <div>
-                <p id="userLabel" class="text-[10px] font-black uppercase text-zinc-500">Connecting...</p>
-                <p id="roomLabel" class="text-[9px] font-mono text-zinc-600 italic"></p>
+                <p id="userLabel" class="text-[10px] font-black uppercase text-zinc-500 italic">Guest</p>
+                <p id="roomLabel" class="text-[9px] font-mono text-zinc-600"></p>
             </div>
         </div>
         <div class="flex gap-2">
-            <button onclick="copyShareLink()" class="w-10 h-10 bg-zinc-900 rounded-full flex items-center justify-center border border-zinc-800 active:scale-90">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
+            <button onclick="toggleHistory()" class="w-10 h-10 glass rounded-full flex items-center justify-center border border-zinc-800">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
             </button>
-            <!-- גלגל שיניים רק לאדמין -->
-            <button onclick="showSettings()" class="admin-only w-10 h-10 bg-zinc-900 rounded-full flex items-center justify-center border border-zinc-800">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            <button onclick="document.getElementById('roomDialog').classList.remove('hidden')" class="admin-only w-10 h-10 glass rounded-full flex items-center justify-center border border-zinc-800">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            </button>
+            <button onclick="copyShareLink()" class="w-10 h-10 glass rounded-full flex items-center justify-center border border-zinc-800">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
             </button>
         </div>
     </header>
 
-    <!-- Score Engine -->
+    <!-- Main Score UI -->
     <div class="p-4">
-        <div class="glass p-6 rounded-[2.5rem] flex justify-between items-center shadow-2xl relative">
-            <div class="text-center">
+        <div class="glass p-8 rounded-[3rem] flex justify-between items-center shadow-2xl relative overflow-hidden">
+            <div class="text-center z-10">
                 <span class="text-[9px] font-black text-blue-500 block mb-1">ALPHA</span>
-                <span id="txtScoreA" class="text-5xl font-black italic tabular-nums">0</span>
+                <span id="txtScoreA" class="text-6xl font-black italic score-badge">0</span>
             </div>
-            <div class="flex flex-col items-center">
-                <div id="txtTimer" class="text-4xl font-mono font-black mb-3 tabular-nums">10:00</div>
-                <!-- כפתור הפעלה רק לאדמין -->
-                <button id="btnMainToggle" class="admin-only w-14 h-14 bg-white text-black rounded-full items-center justify-center shadow-xl active:scale-90">
-                    <svg id="iconPlay" width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            
+            <div class="flex flex-col items-center z-10">
+                <div id="txtTimer" class="text-4xl font-mono font-black mb-4 tabular-nums text-zinc-200">10:00</div>
+                <button id="btnMainToggle" class="admin-only w-16 h-16 bg-white text-black rounded-full flex items-center justify-center shadow-2xl active:scale-90 transition-all">
+                    <svg id="iconPlay" width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
                 </button>
-                <!-- הודעה לשחקנים רגילים שהמשחק לא התחיל -->
-                <div id="waitingMsg" class="text-[8px] font-bold text-zinc-500 uppercase tracking-widest block admin-hidden">Waiting for Admin</div>
+                <div id="waitAdmin" class="text-[8px] font-black text-zinc-600 uppercase tracking-[0.2em] admin-hidden">Standby for Admin</div>
             </div>
-            <div class="text-center">
+
+            <div class="text-center z-10">
                 <span class="text-[9px] font-black text-orange-500 block mb-1">BRAVO</span>
-                <span id="txtScoreB" class="text-5xl font-black italic tabular-nums">0</span>
+                <span id="txtScoreB" class="text-6xl font-black italic score-badge">0</span>
             </div>
         </div>
     </div>
 
-    <!-- Battle Zone -->
+    <!-- Battle Grid -->
     <main class="flex-1 overflow-y-auto px-4 space-y-8 no-scrollbar pb-32">
         <section>
-            <h2 class="text-[10px] font-black text-zinc-600 uppercase mb-3 px-2">Alpha Team</h2>
+            <div class="flex justify-between items-center mb-4 px-2">
+                <h2 class="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Alpha Detachment</h2>
+                <span id="countA" class="text-[10px] font-bold text-blue-500 opacity-50">0 Active</span>
+            </div>
             <div id="gridAlpha" class="grid grid-cols-2 gap-3"></div>
         </section>
+
         <section>
-            <h2 class="text-[10px] font-black text-zinc-600 uppercase mb-3 px-2">Bravo Team</h2>
+            <div class="flex justify-between items-center mb-4 px-2">
+                <h2 class="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Bravo Detachment</h2>
+                <span id="countB" class="text-[10px] font-bold text-orange-500 opacity-50">0 Active</span>
+            </div>
             <div id="gridBravo" class="grid grid-cols-2 gap-3"></div>
         </section>
     </main>
 
-    <!-- Admin Bottom Footer -->
-    <footer class="admin-only fixed bottom-6 inset-x-6">
-        <button onclick="resetMatchData()" class="w-full glass text-red-500/70 h-14 rounded-2xl font-black text-[10px] uppercase tracking-widest border-red-500/10">Reset Match & Scores</button>
+    <!-- Admin Footer -->
+    <footer class="admin-only fixed bottom-6 inset-x-6 flex gap-3">
+        <button onclick="endRound()" class="flex-1 glass bg-red-500/10 border-red-500/20 text-red-500 h-14 rounded-2xl font-black text-[10px] uppercase tracking-widest">End Round & Log</button>
     </footer>
 
     <script>
@@ -144,15 +158,19 @@
 
         let activeTeamSelection = null;
         let state = {
-            adminId: null, // שומר מי האדמין
-            run: false, time: 600, resp: 30, sA: 0, sB: 0,
-            tA: Array(6).fill(0).map(()=>({ownerId: null, name: null, end: 0})),
-            tB: Array(6).fill(0).map(()=>({ownerId: null, name: null, end: 0})),
+            adminId: null,
+            run: false,
+            time: 600,
+            resp: 30,
+            sA: 0,
+            sB: 0,
+            players: {}, // { id: { name, team, end } }
+            history: [], // [ { round, sA, sB, winner, ts } ]
             ts: Date.now()
         };
 
-        const roomID = new URLSearchParams(window.location.search).get('r') || 'battle_master';
-        document.getElementById('roomLabel').innerText = "ROOM: " + roomID;
+        const roomID = new URLSearchParams(window.location.search).get('r') || 'global_arena';
+        document.getElementById('roomLabel').innerText = "HQ: " + roomID.toUpperCase();
 
         if(userLocal.name && userLocal.team) {
             document.getElementById('loginScreen').classList.add('hidden');
@@ -173,39 +191,37 @@
             localStorage.setItem('as_name', name);
             localStorage.setItem('as_team', activeTeamSelection);
             document.getElementById('loginScreen').classList.add('hidden');
-            updateUserLabel();
-            checkAdminStatus();
+            joinGame();
         };
 
+        async function joinGame() {
+            const ref = db.collection('airsoft_ultimate').doc(roomID);
+            await ref.get().then(doc => {
+                let d = doc.exists ? doc.data() : state;
+                if(!d.adminId) d.adminId = userLocal.id;
+                d.players[userLocal.id] = { name: userLocal.name, team: userLocal.team, end: 0 };
+                d.ts = Date.now();
+                ref.set(d);
+            });
+            updateUserLabel();
+        }
+
         function updateUserLabel() {
-            const el = document.getElementById('userLabel');
             const isAdmin = state.adminId === userLocal.id;
-            el.innerText = (isAdmin ? "👑 " : "") + `${userLocal.name} (${userLocal.team==='A'?'ALPHA':'BRAVO'})`;
-            el.className = `text-[10px] font-black uppercase ${userLocal.team==='A'?'text-blue-500':'text-orange-500'}`;
-            
+            const el = document.getElementById('userLabel');
+            el.innerText = (isAdmin ? "👑 " : "") + `${userLocal.name}`;
+            el.className = `text-[10px] font-black uppercase italic ${userLocal.team==='A'?'text-blue-500':'text-orange-500'}`;
             if(isAdmin) document.body.classList.add('is-admin');
-            else document.body.classList.remove('is-admin');
         }
 
         async function connect() {
             try {
                 await auth.signInAnonymously();
-                const ref = db.collection('airsoft_v7').doc(roomID);
-                ref.onSnapshot(doc => {
+                db.collection('airsoft_ultimate').doc(roomID).onSnapshot(doc => {
                     if(doc.exists) {
                         const d = doc.data();
-                        // אם אין אדמין לחדר, הראשון שנכנס תופס
-                        if(!d.adminId) {
-                            d.adminId = userLocal.id;
-                            ref.set(d);
-                        }
                         if(d.ts > state.ts || d.run !== state.run) state = d;
-                    } else {
-                        state.adminId = userLocal.id; // יוצר החדר הוא האדמין
-                        ref.set(state);
                     }
-                    document.getElementById('connStatus').className = "w-2.5 h-2.5 rounded-full bg-green-500 shadow-[0_0_10px_#22c55e]";
-                    updateUserLabel();
                     render();
                 });
             } catch(e) {}
@@ -217,106 +233,141 @@
             const m = Math.floor(state.time/60), s = state.time%60;
             document.getElementById('txtTimer').innerText = `${m}:${s<10?'0':''}${s}`;
             document.getElementById('iconPlay').innerHTML = state.run ? '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>' : '<path d="M8 5v14l11-7z"/>';
+            document.getElementById('waitAdmin').style.display = state.run ? 'none' : 'block';
             
-            // תצוגה מותאמת לסטטוס ריצה
-            document.getElementById('waitingMsg').style.display = state.run ? 'none' : 'block';
-
-            buildGrid('gridAlpha', state.tA, 'A');
-            buildGrid('gridBravo', state.tB, 'B');
+            updateUserLabel();
+            renderGrids();
         }
 
-        function buildGrid(containerId, list, teamKey) {
-            const container = document.getElementById(containerId);
-            container.innerHTML = '';
+        function renderGrids() {
+            const alpha = document.getElementById('gridAlpha');
+            const bravo = document.getElementById('gridBravo');
+            alpha.innerHTML = ''; bravo.innerHTML = '';
+            
+            let countA = 0, countB = 0;
             const now = Date.now();
 
-            list.forEach((p, i) => {
+            Object.entries(state.players).forEach(([id, p]) => {
                 const isDead = p.end > now;
-                const isMine = p.ownerId === userLocal.id;
-                const isOccupied = p.ownerId !== null;
-
-                const card = document.createElement('button');
-                card.className = `player-card flex flex-col items-center justify-center ${isDead?'is-dead':''} ${isMine?'is-me':''} ${isOccupied?'occupied':'empty'} ${!state.run?'opacity-30':''}`;
+                const isMe = id === userLocal.id;
+                const card = document.createElement('div');
+                card.className = `player-card glass ${isDead?'is-dead':''} ${isMe?'is-me':''} ${!state.run?'opacity-40':''}`;
                 
                 if(isDead) {
                     const sec = Math.ceil((p.end - now)/1000);
-                    card.innerHTML = `<span class="text-3xl font-black italic">${sec}</span>`;
+                    card.innerHTML = `<span class="text-3xl font-black italic">${sec}</span><span class="text-[8px] uppercase opacity-50 mt-1">${p.name}</span>`;
                 } else {
-                    const color = teamKey === 'A' ? 'text-blue-500' : 'text-orange-500';
                     card.innerHTML = `
-                        <span class="text-[7px] uppercase font-black opacity-30 mb-1">${teamKey}${i+1}</span>
-                        <span class="font-black text-sm uppercase ${isOccupied ? color : 'text-zinc-600'}">${p.name || 'פנוי'}</span>
+                        <span class="text-[8px] font-black opacity-30 uppercase mb-1">Status: OK</span>
+                        <span class="font-black text-sm uppercase ${p.team==='A'?'text-blue-500':'text-orange-500'}">${p.name}</span>
                     `;
                 }
 
                 card.onclick = () => {
-                    if(!state.run || isDead) return;
-                    if(!isOccupied) {
-                        const alreadyTaken = [...state.tA, ...state.tB].some(x => x.ownerId === userLocal.id);
-                        if(alreadyTaken || userLocal.team !== teamKey) return;
-                        p.ownerId = userLocal.id;
-                        p.name = userLocal.name;
-                        triggerRespawn(p, teamKey);
-                    } else if(isMine) {
-                        triggerRespawn(p, teamKey);
-                    }
+                    if(!isMe || !state.run || isDead) return;
+                    p.end = Date.now() + (state.resp * 1000);
+                    if(p.team === 'A') state.sB++; else state.sA++;
+                    sync();
                 };
-                container.appendChild(card);
-            });
-        }
 
-        function triggerRespawn(player, team) {
-            player.end = Date.now() + (state.resp * 1000);
-            if(team === 'A') state.sB++; else state.sA++;
-            sync();
+                // Admin functionality: Click to rename
+                if(state.adminId === userLocal.id) {
+                    card.oncontextmenu = (e) => {
+                        e.preventDefault();
+                        const newName = prompt(`שנה שם עבור ${p.name}:`, p.name);
+                        if(newName) { p.name = newName; sync(); }
+                    };
+                }
+
+                if(p.team === 'A') { alpha.appendChild(card); countA++; }
+                else { bravo.appendChild(card); countB++; }
+            });
+
+            document.getElementById('countA').innerText = `${countA} Active`;
+            document.getElementById('countB').innerText = `${countB} Active`;
         }
 
         function sync() {
             state.ts = Date.now();
-            render();
-            db.collection('airsoft_v7').doc(roomID).set(state).catch(()=>{});
+            db.collection('airsoft_ultimate').doc(roomID).set(state).catch(()=>{});
         }
 
-        window.showSettings = () => {
-            if(state.adminId !== userLocal.id) return;
-            document.getElementById('inGameTime').value = state.time / 60;
-            document.getElementById('inRespTime').value = state.resp;
-            document.getElementById('settingsPanel').classList.remove('hidden');
-        };
-        window.hideSettings = () => document.getElementById('settingsPanel').classList.add('hidden');
-        window.saveSettings = () => {
-            state.time = parseInt(document.getElementById('inGameTime').value) * 60;
-            state.resp = parseInt(document.getElementById('inRespTime').value);
-            sync();
-            hideSettings();
+        window.toggleHistory = () => {
+            const p = document.getElementById('historyPanel');
+            const isHidden = p.classList.contains('hidden');
+            if(isHidden) {
+                const list = document.getElementById('historyList');
+                list.innerHTML = '';
+                if(state.history.length === 0) {
+                    document.getElementById('noHistory').classList.remove('hidden');
+                } else {
+                    document.getElementById('noHistory').classList.add('hidden');
+                    state.history.slice().reverse().forEach(h => {
+                        const div = document.createElement('div');
+                        div.className = "glass p-6 rounded-2xl flex justify-between items-center border-white/5";
+                        div.innerHTML = `
+                            <div>
+                                <p class="text-[10px] font-black text-zinc-500 uppercase">Round ${h.round}</p>
+                                <p class="text-xs font-bold text-zinc-300">${new Date(h.ts).toLocaleTimeString()}</p>
+                            </div>
+                            <div class="flex items-center gap-4">
+                                <div class="text-center"><span class="block text-[8px] text-blue-500 font-bold">ALPHA</span><span class="text-xl font-black">${h.sA}</span></div>
+                                <div class="w-px h-8 bg-white/10"></div>
+                                <div class="text-center"><span class="block text-[8px] text-orange-500 font-bold">BRAVO</span><span class="text-xl font-black">${h.sB}</span></div>
+                            </div>
+                            <div class="text-right">
+                                <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase ${h.winner==='ALPHA'?'bg-blue-500/20 text-blue-500':'bg-orange-500/20 text-orange-500'}">${h.winner} WIN</span>
+                            </div>
+                        `;
+                        list.appendChild(div);
+                    });
+                }
+            }
+            p.classList.toggle('hidden');
         };
 
-        window.resetMatchData = () => {
-            if(state.adminId !== userLocal.id) return;
-            if(!confirm("Reset match? This will clear scores and timer.")) return;
+        window.endRound = () => {
+            if(!confirm("האם לסיים את הסיבוב ולשמור היסטוריה?")) return;
+            const winner = state.sA > state.sB ? 'ALPHA' : (state.sB > state.sA ? 'BRAVO' : 'DRAW');
+            state.history.push({
+                round: state.history.length + 1,
+                sA: state.sA,
+                sB: state.sB,
+                winner: winner,
+                ts: Date.now()
+            });
             state.sA = 0; state.sB = 0; state.time = 600; state.run = false;
-            state.tA.forEach(p => p.end = 0); state.tB.forEach(p => p.end = 0);
+            Object.values(state.players).forEach(p => p.end = 0);
             sync();
+            toggleHistory();
+        };
+
+        window.createNewRoom = () => {
+            const name = document.getElementById('newRoomName').value.trim().toLowerCase();
+            if(!name) return;
+            window.location.search = `?r=${name}`;
         };
 
         window.copyShareLink = () => {
-            const el = document.createElement('textarea');
-            el.value = window.location.href;
-            document.body.appendChild(el); el.select();
+            const temp = document.createElement('input');
+            document.body.appendChild(temp);
+            temp.value = window.location.href;
+            temp.select();
             document.execCommand('copy');
-            document.body.removeChild(el);
-            alert("Link copied! Share it with your team.");
+            document.body.removeChild(temp);
+            alert("קישור לחדר הועתק!");
         };
 
-        document.getElementById('btnMainToggle').onclick = () => { 
+        document.getElementById('btnMainToggle').onclick = () => {
             if(state.adminId !== userLocal.id) return;
-            state.run = !state.run; 
-            sync(); 
+            state.run = !state.run;
+            sync();
         };
 
         setInterval(() => {
             if(state.run && state.time > 0) {
                 state.time--;
+                if(state.time === 0) endRound();
                 render();
                 if(state.time % 10 === 0) sync();
             }
