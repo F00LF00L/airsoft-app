@@ -3,101 +3,141 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Airsoft HQ - Tactical Free Maps</title>
+    <title>Airsoft HQ Pro - Tactical Edition</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     
-    <!-- Leaflet CSS & JS (Free Mapping Library) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
-        body, html { height: 100%; margin: 0; padding: 0; background: #000; color: #fff; overflow: hidden; font-family: system-ui; }
+        body, html { height: 100%; margin: 0; padding: 0; background: #050505; color: #eee; overflow: hidden; font-family: system-ui; }
         #map { height: 100%; width: 100%; position: absolute; top: 0; left: 0; z-index: 1; }
         .ui-overlay { position: absolute; z-index: 10; pointer-events: none; width: 100%; height: 100%; display: flex; flex-direction: column; }
         .ui-element { pointer-events: auto; }
-        .glass { background: rgba(10, 10, 10, 0.85); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+        .glass { background: rgba(15, 15, 15, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); }
         
-        .respawn-locked { 
-            background: #1f2937 !important; 
-            color: #4b5563 !important; 
-            border: 2px solid #374151 !important;
-            filter: grayscale(1);
-            opacity: 0.7;
-        }
+        /* Respawn Logic Styles */
+        .is-locked { background: #1a1a1a !important; color: #444 !important; border-color: #333 !important; filter: grayscale(1); }
+        .is-dead { border-color: #ef4444 !important; box-shadow: 0 0 15px rgba(239, 68, 68, 0.2); }
         
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-left: 5px; }
-        .online { background: #22c55e; box-shadow: 0 0 10px #22c55e; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-left: 5px; transition: 0.3s; }
+        .online { background: #22c55e; box-shadow: 0 0 8px #22c55e; }
         
-        /* Pulse for User Location */
         .user-pulse {
-            width: 12px;
-            height: 12px;
-            background: #3b82f6;
-            border: 2px solid white;
-            border-radius: 50%;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            width: 14px; height: 14px; background: white; border: 3px solid #3b82f6;
+            border-radius: 50%; box-shadow: 0 0 10px rgba(0,0,0,0.5);
         }
-        
-        .leaflet-container { background: #000; }
+
+        /* Modal / Panel Styles */
+        .panel-slide { transition: transform 0.3s ease-in-out; }
+        .panel-hidden { transform: translateY(100%); }
     </style>
 </head>
 <body>
 
     <div id="map"></div>
 
+    <!-- UI LAYER -->
     <div class="ui-overlay p-4 justify-between">
-        <!-- Top Info Bar -->
+        
+        <!-- Header: Stats & Timer -->
         <div class="flex justify-between items-start ui-element">
-            <div class="glass p-4 rounded-3xl min-w-[140px]">
+            <div class="glass p-3 rounded-2xl min-w-[140px]">
                 <div class="flex items-center mb-1">
-                    <div id="gps-status" class="status-dot online"></div>
-                    <span id="player-name-ui" class="text-[10px] font-black italic uppercase text-zinc-400">CONNECTING...</span>
+                    <div id="gps-indicator" class="status-dot online"></div>
+                    <span id="player-label" class="text-[10px] font-black uppercase text-zinc-400">CONNECTING...</span>
                 </div>
-                <div id="dist-label" class="text-[10px] font-mono text-blue-400">BASE DIST: --m</div>
+                <div id="distance-label" class="text-[9px] font-mono text-blue-400 uppercase">BASE: --m</div>
             </div>
 
-            <div class="glass p-4 rounded-3xl text-center">
-                <div id="match-timer" class="text-2xl font-black italic tabular-nums">10:00</div>
-                <div class="text-[8px] font-bold text-zinc-500 uppercase tracking-tighter">Match Time</div>
+            <div class="glass p-3 px-6 rounded-2xl text-center flex flex-col items-center">
+                <div id="display-timer" class="text-2xl font-black italic tracking-tighter tabular-nums">10:00</div>
+                <div id="game-status-label" class="text-[7px] font-bold text-zinc-500 uppercase">WAITING FOR ADMIN</div>
             </div>
+
+            <button onclick="toggleAdminPanel()" class="glass p-3 rounded-2xl ui-element">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM12 14v2M12 8v2"/></svg>
+            </button>
         </div>
 
-        <!-- Center Alert -->
-        <div id="lock-msg" class="self-center glass px-6 py-3 rounded-full text-red-500 font-bold text-[10px] uppercase tracking-[0.2em] hidden ui-element text-center">
-            ⚠️ OUT OF RESPAWN ZONE<br><span class="text-[8px] opacity-60">RETURN TO BASE TO DEPLOY</span>
+        <!-- Center: Geofence Lock Message -->
+        <div id="geofence-alert" class="self-center glass px-6 py-4 rounded-3xl text-red-500 font-bold text-[10px] uppercase tracking-widest hidden ui-element text-center animate-pulse">
+            ⚠️ OUT OF RESPAWN ZONE<br>
+            <span class="text-zinc-500 text-[8px] mt-1 block">RETURN TO BASE TO ACTIVATE RESPAWN</span>
         </div>
 
-        <!-- Bottom Controls -->
+        <!-- Bottom: Scoring & Main Button -->
         <div class="flex flex-col gap-3 ui-element">
+            
             <div class="flex justify-between gap-3 h-14">
                 <div class="flex-1 glass rounded-2xl flex items-center justify-center border-b-2 border-blue-600/30">
-                    <span class="text-blue-500 font-black text-[10px] ml-2 font-mono">ALPHA</span>
-                    <span id="score-a-ui" class="text-xl font-black">0</span>
+                    <span class="text-blue-500 font-black text-[10px] ml-2">ALPHA</span>
+                    <span id="score-a" class="text-xl font-black italic">0</span>
                 </div>
                 <div class="flex-1 glass rounded-2xl flex items-center justify-center border-b-2 border-orange-600/30">
-                    <span id="score-b-ui" class="text-xl font-black mr-2">0</span>
-                    <span class="text-orange-500 font-black text-[10px] font-mono text-left">BRAVO</span>
+                    <span id="score-b" class="text-xl font-black italic mr-2">0</span>
+                    <span class="text-orange-500 font-black text-[10px]">BRAVO</span>
                 </div>
             </div>
 
-            <button id="action-btn" class="w-full h-20 glass rounded-[2rem] flex flex-col items-center justify-center transition-all active:scale-95 border-2 border-white/10">
-                <span id="action-icon" class="text-xl mb-1">🛡️</span>
-                <span id="action-text" class="text-sm font-black italic uppercase tracking-widest">DEPLOYED</span>
+            <button id="main-btn" class="w-full h-20 glass rounded-[2rem] flex flex-col items-center justify-center transition-all active:scale-95 border-2 border-white/10 overflow-hidden relative">
+                <div id="btn-progress" class="absolute left-0 bottom-0 h-1 bg-white/20 transition-all duration-1000" style="width: 0%"></div>
+                <span id="btn-icon" class="text-xl mb-1">🛡️</span>
+                <span id="btn-text" class="text-sm font-black italic uppercase tracking-widest">DEPLOYED</span>
             </button>
+        </div>
+    </div>
 
-            <div id="admin-tools" class="hidden glass p-3 rounded-2xl flex justify-between items-center px-6">
-                <button onclick="setBaseMode('A')" class="text-[9px] font-black text-blue-500 uppercase">Set A Base</button>
-                <button onclick="toggleTimer()" class="text-zinc-500"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
-                <button onclick="setBaseMode('B')" class="text-[9px] font-black text-orange-500 uppercase">Set B Base</button>
+    <!-- ADMIN PANEL (Hidden by default) -->
+    <div id="admin-panel" class="fixed inset-x-0 bottom-0 z-[50] glass rounded-t-[3rem] p-8 panel-slide panel-hidden ui-element max-h-[85vh] overflow-y-auto">
+        <div class="w-12 h-1.5 bg-zinc-800 rounded-full mx-auto mb-8"></div>
+        
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-xl font-black italic uppercase">Admin Command</h2>
+            <button onclick="toggleAdminPanel()" class="text-zinc-500 font-bold">CLOSE</button>
+        </div>
+
+        <div id="admin-controls" class="space-y-6 hidden">
+            <!-- Game Controls -->
+            <div class="grid grid-cols-2 gap-4">
+                <button onclick="toggleGame()" id="start-stop-btn" class="p-4 rounded-2xl bg-white text-black font-black uppercase italic text-sm">Start Match</button>
+                <button onclick="resetServer()" class="p-4 rounded-2xl bg-red-900/30 text-red-500 font-black uppercase italic text-sm border border-red-500/20">Reset Server</button>
             </div>
+
+            <!-- GPS Configuration -->
+            <div class="space-y-3">
+                <label class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Base Deployment (Click Map after selecting)</label>
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="prepBase('A')" class="p-3 rounded-xl border border-blue-500/30 text-blue-500 text-[10px] font-bold uppercase">Set Alpha Base</button>
+                    <button onclick="prepBase('B')" class="p-3 rounded-xl border border-orange-500/30 text-orange-500 text-[10px] font-bold uppercase">Set Bravo Base</button>
+                </div>
+            </div>
+
+            <!-- Settings -->
+            <div class="space-y-4 pt-4 border-t border-white/5">
+                <div class="flex justify-between items-center">
+                    <span class="text-xs font-bold text-zinc-400">Match Duration (min)</span>
+                    <input type="number" id="input-time" onchange="updateSettings()" class="bg-zinc-900 w-16 p-2 rounded-lg text-center text-xs" value="10">
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-xs font-bold text-zinc-400">Respawn Time (sec)</span>
+                    <input type="number" id="input-resp" onchange="updateSettings()" class="bg-zinc-900 w-16 p-2 rounded-lg text-center text-xs" value="30">
+                </div>
+            </div>
+        </div>
+
+        <div id="no-admin-view" class="text-center py-8">
+            <p class="text-zinc-500 text-xs mb-4">You are not the mission commander.</p>
+            <button onclick="takeAdmin()" class="px-8 py-3 bg-zinc-800 rounded-full text-[10px] font-black uppercase tracking-widest">Take Control</button>
         </div>
     </div>
 
     <script>
+        // --- Firebase Config ---
         const firebaseConfig = {
             apiKey: "AIzaSyDhNuddcNUbKdvJoKvtkJtca4M4OPwabug",
             authDomain: "airsoft-hq-e9bcd.firebaseapp.com",
@@ -108,298 +148,221 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-        const roomID = new URLSearchParams(window.location.search).get('r') || 'tactical_hq';
+        const roomID = new URLSearchParams(window.location.search).get('r') || 'tactical_field_01';
 
+        // --- State ---
         let map, myMarker, playerMarkers = {}, baseZones = { A: null, B: null };
-        let currentPos = null, baseSetup = null;
-        
-        const uId = localStorage.getItem('as_id') || Math.random().toString(36).substring(7);
-        localStorage.setItem('as_id', uId);
-        const uName = localStorage.getItem('as_name') || "Operator";
-        const uTeam = localStorage.getItem('as_team') || "A";
+        let userPos = null, basePrep = null;
+        let localState = { adminId: null, players: {}, bases: { A: null, B: null }, time: 600, resp: 30, sA: 0, sB: 0, run: false };
 
-        let roomState = {
-            adminId: null, players: {}, bases: { A: null, B: null },
-            radius: 20, run: false, time: 600, sA: 0, sB: 0
-        };
+        const userId = localStorage.getItem('as_id') || Math.random().toString(36).substring(7);
+        localStorage.setItem('as_id', userId);
+        const userName = localStorage.getItem('as_name') || "Operator";
+        const userTeam = localStorage.getItem('as_team') || "A";
 
+        // --- Initialization ---
         function initMap() {
-            // Initialize Leaflet Map
-            map = L.map('map', { zoomControl: false }).setView([31.7683, 35.2137], 18);
+            map = L.map('map', { zoomControl: false, attributionControl: false }).setView([31.7683, 35.2137], 18);
+            
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}').addTo(map);
 
-            // Using free satellite imagery from Esri
-            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EBP, and the GIS User Community'
-            }).addTo(map);
-
-            // Tracking Location
             if (navigator.geolocation) {
-                navigator.geolocation.watchPosition(updateGPS, handleError, {
+                navigator.geolocation.watchPosition(updateLocation, handleLocError, {
                     enableHighAccuracy: true, maximumAge: 0, timeout: 5000
                 });
             }
 
             map.on('click', (e) => {
-                if(roomState.adminId === uId && baseSetup) {
-                    roomState.bases[baseSetup] = { lat: e.latlng.lat, lng: e.latlng.lng };
-                    baseSetup = null;
-                    saveState();
+                if(localState.adminId === userId && basePrep) {
+                    localState.bases[basePrep] = { lat: e.latlng.lat, lng: e.latlng.lng };
+                    basePrep = null;
+                    sync();
                 }
             });
 
-            startSync();
+            startListeners();
         }
 
-        function updateGPS(pos) {
-            currentPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        function updateLocation(pos) {
+            userPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            document.getElementById('gps-indicator').className = "status-dot online";
             
             if(!myMarker) {
-                const icon = L.divIcon({ className: 'user-pulse' });
-                myMarker = L.marker([currentPos.lat, currentPos.lng], { icon: icon }).addTo(map);
-                map.setView([currentPos.lat, currentPos.lng]);
+                myMarker = L.marker([userPos.lat, userPos.lng], { 
+                    icon: L.divIcon({ className: 'user-pulse' }) 
+                }).addTo(map);
+                map.setView([userPos.lat, userPos.lng]);
             } else {
-                myMarker.setLatLng([currentPos.lat, currentPos.lng]);
+                myMarker.setLatLng([userPos.lat, userPos.lng]);
             }
 
-            if(roomState.players[uId]) {
-                db.collection('airsoft_arena').doc(roomID).update({
-                    [`players.${uId}.pos`]: currentPos,
-                    [`players.${uId}.ts`]: Date.now()
+            if(localState.players[userId]) {
+                db.collection('airsoft_hq').doc(roomID).update({
+                    [`players.${userId}.pos`]: userPos,
+                    [`players.${userId}.ts`]: Date.now()
                 });
             }
-            validateRespawn();
+            checkGeofence();
         }
 
-        function validateRespawn() {
-            const targetBase = roomState.bases[uTeam];
-            if(!targetBase || !currentPos) return;
+        function checkGeofence() {
+            const myBase = localState.bases[userTeam];
+            const distLabel = document.getElementById('distance-label');
+            const alertBox = document.getElementById('geofence-alert');
+            const btn = document.getElementById('main-btn');
 
-            const dist = map.distance([currentPos.lat, currentPos.lng], [targetBase.lat, targetBase.lng]);
-            document.getElementById('dist-label').innerText = `BASE DIST: ${Math.round(dist)}m`;
-            
-            const isDead = roomState.players[uId]?.end > Date.now();
-            const btn = document.getElementById('action-btn');
-            const lock = document.getElementById('lock-msg');
+            if(!myBase || !userPos) {
+                distLabel.innerText = "BASE: NOT SET";
+                return;
+            }
 
+            const dist = map.distance([userPos.lat, userPos.lng], [myBase.lat, myBase.lng]);
+            distLabel.innerText = `BASE: ${Math.round(dist)}M`;
+
+            const isDead = localState.players[userId]?.end > Date.now();
             if(isDead) {
-                if(dist <= roomState.radius) {
-                    btn.classList.remove('respawn-locked');
+                if(dist <= 25) { // 25m Radius
+                    btn.classList.remove('is-locked');
                     btn.disabled = false;
-                    lock.classList.add('hidden');
-                    document.getElementById('action-text').innerText = "READY FOR RESPAWN";
+                    alertBox.classList.add('hidden');
+                    document.getElementById('btn-text').innerText = "RESPAWN READY";
                 } else {
-                    btn.classList.add('respawn-locked');
+                    btn.classList.add('is-locked');
                     btn.disabled = true;
-                    lock.classList.remove('hidden');
-                    document.getElementById('action-text').innerText = "MOVE TO BASE";
+                    alertBox.classList.remove('hidden');
+                    document.getElementById('btn-text').innerText = "GO TO BASE";
                 }
             }
         }
 
-        function startSync() {
-            db.collection('airsoft_arena').doc(roomID).onSnapshot(doc => {
+        function startListeners() {
+            db.collection('airsoft_hq').doc(roomID).onSnapshot(doc => {
                 if(doc.exists) {
-                    roomState = doc.data();
-                    renderWorld();
+                    localState = doc.data();
+                    refreshUI();
                 } else {
-                    roomState.adminId = uId;
-                    saveState();
+                    localState.adminId = userId;
+                    sync();
                 }
             });
 
-            // Join the game in DB
-            const joinData = { name: uName, team: uTeam, pos: null, end: 0, ts: Date.now() };
-            db.collection('airsoft_arena').doc(roomID).update({ [`players.${uId}`]: joinData });
+            // Join Logic
+            db.collection('airsoft_hq').doc(roomID).update({
+                [`players.${userId}`]: { name: userName, team: userTeam, end: 0, ts: Date.now(), pos: userPos || null }
+            });
+
+            // Heartbeat for online status
+            setInterval(() => {
+                if(localState.players[userId]) {
+                    db.collection('airsoft_hq').doc(roomID).update({ [`players.${userId}.ts`]: Date.now() });
+                }
+            }, 8000);
         }
 
-        function renderWorld() {
-            const isAdmin = roomState.adminId === uId;
-            document.getElementById('admin-tools').classList.toggle('hidden', !isAdmin);
-            document.getElementById('player-name-ui').innerText = (isAdmin ? "👑 " : "") + uName;
-            document.getElementById('score-a-ui').innerText = roomState.sA;
-            document.getElementById('score-b-ui').innerText = roomState.sB;
+        function refreshUI() {
+            const isAdmin = localState.adminId === userId;
+            document.getElementById('admin-controls').classList.toggle('hidden', !isAdmin);
+            document.getElementById('no-admin-view').classList.toggle('hidden', isAdmin);
+            document.getElementById('player-label').innerText = (isAdmin ? "👑 " : "") + userName;
+            
+            document.getElementById('score-a').innerText = localState.sA;
+            document.getElementById('score-b').innerText = localState.sB;
 
-            const m = Math.floor(roomState.time/60), s = roomState.time%60;
-            document.getElementById('match-timer').innerText = `${m}:${s<10?'0':''}${s}`;
+            const m = Math.floor(localState.time/60), s = localState.time%60;
+            document.getElementById('display-timer').innerText = `${m}:${s<10?'0':''}${s}`;
+            document.getElementById('game-status-label').innerText = localState.run ? "MISSION IN PROGRESS" : "MISSION PAUSED";
 
+            // Render Players
             const now = Date.now();
-            Object.entries(roomState.players).forEach(([id, p]) => {
-                if(id === uId) return;
-                if(now - p.ts > 30000) {
+            Object.entries(localState.players).forEach(([id, p]) => {
+                if(id === userId) return;
+                if(now - p.ts > 40000) {
                     if(playerMarkers[id]) { map.removeLayer(playerMarkers[id]); delete playerMarkers[id]; }
                     return;
                 }
                 if(!playerMarkers[id]) {
                     playerMarkers[id] = L.circleMarker([p.pos.lat, p.pos.lng], {
-                        radius: 6, color: '#000', weight: 1, opacity: 1, fillOpacity: 1,
+                        radius: 6, color: '#000', weight: 1, fillOpacity: 1,
                         fillColor: p.team === 'A' ? '#3b82f6' : '#f97316'
-                    }).addTo(map).bindTooltip(p.name, { permanent: true, direction: 'top', className: 'bg-transparent border-none text-[8px] text-white shadow-none' });
+                    }).addTo(map).bindTooltip(p.name, { permanent: true, direction: 'top', className: 'bg-transparent border-none text-[8px] text-white shadow-none font-bold' });
                 }
                 if(p.pos) playerMarkers[id].setLatLng([p.pos.lat, p.pos.lng]);
                 playerMarkers[id].setStyle({ fillOpacity: p.end > now ? 0.2 : 1 });
             });
 
+            // Render Bases
             ['A', 'B'].forEach(t => {
-                const b = roomState.bases[t];
+                const b = localState.bases[t];
                 if(b) {
                     if(!baseZones[t]) {
                         baseZones[t] = L.circle([b.lat, b.lng], {
-                            radius: roomState.radius, color: t==='A'?'#3b82f6':'#f97316', weight: 1, fillOpacity: 0.1
+                            radius: 25, color: t==='A'?'#3b82f6':'#f97316', weight: 2, fillOpacity: 0.15
                         }).addTo(map);
                     }
                     baseZones[t].setLatLng([b.lat, b.lng]);
                 }
             });
 
-            updateMainButton();
+            updateMainBtnState();
         }
 
-        function updateMainButton() {
-            const isDead = roomState.players[uId]?.end > Date.now();
-            const btn = document.getElementById('action-btn');
-            if(isDead) {
-                btn.style.borderColor = "#ef4444";
-                document.getElementById('action-icon').innerText = "💀";
-                validateRespawn();
+        function updateMainBtnState() {
+            const p = localState.players[userId];
+            const btn = document.getElementById('main-btn');
+            const now = Date.now();
+            
+            if(p.end > now) {
+                btn.classList.add('is-dead');
+                document.getElementById('btn-icon').innerText = "💀";
+                const timeLeft = Math.ceil((p.end - now) / 1000);
+                document.getElementById('btn-progress').style.width = `${((p.end - now) / (localState.resp * 1000)) * 100}%`;
+                checkGeofence();
             } else {
-                btn.style.borderColor = "rgba(255,255,255,0.1)";
-                btn.classList.remove('respawn-locked');
+                btn.classList.remove('is-dead', 'is-locked');
                 btn.disabled = false;
-                document.getElementById('action-icon').innerText = "🛡️";
-                document.getElementById('action-text').innerText = "OPERATIONAL";
-                document.getElementById('lock-msg').classList.add('hidden');
+                document.getElementById('btn-icon').innerText = "🛡️";
+                document.getElementById('btn-text').innerText = "DEPLOYED";
+                document.getElementById('btn-progress').style.width = "0%";
+                document.getElementById('geofence-alert').classList.add('hidden');
             }
         }
 
-        document.getElementById('action-btn').onclick = () => {
+        // --- Interactions ---
+        document.getElementById('main-btn').onclick = () => {
             const now = Date.now();
-            const p = roomState.players[uId];
+            const p = localState.players[userId];
             if(p.end > now) {
                 p.end = 0;
             } else {
-                p.end = now + (30 * 1000); // 30s penalty
-                if(uTeam === 'A') roomState.sB++; else roomState.sA++;
+                p.end = now + (localState.resp * 1000);
+                if(userTeam === 'A') localState.sB++; else localState.sA++;
             }
-            saveState();
+            sync();
         };
 
-        window.setBaseMode = (team) => {
-            baseSetup = team;
-            alert(`לחץ על המפה כדי להציב את בסיס ${team === 'A' ? 'אלפא' : 'בראבו'}`);
-        };
-
-        function handleError(e) { console.error("GPS Error", e); }
-        function saveState() { db.collection('airsoft_arena').doc(roomID).set(roomState); }
+        function toggleAdminPanel() { document.getElementById('admin-panel').classList.toggle('panel-hidden'); }
+        function takeAdmin() { localState.adminId = userId; sync(); }
+        function toggleGame() { localState.run = !localState.run; sync(); }
+        function resetServer() {
+            if(!confirm("Reset everything? Scores, map bases and players?")) return;
+            localState = { adminId: userId, players: {}, bases: { A: null, B: null }, time: 600, resp: 30, sA: 0, sB: 0, run: false };
+            sync();
+        }
+        function prepBase(t) { basePrep = t; toggleAdminPanel(); alert(`Click anywhere on the map to set Team ${t} Base`); }
+        function updateSettings() {
+            localState.time = document.getElementById('input-time').value * 60;
+            localState.resp = document.getElementById('input-resp').value;
+            sync();
+        }
+        function sync() { db.collection('airsoft_hq').doc(roomID).set(localState); }
+        function handleLocError(e) { console.warn("GPS Error", e); }
 
         window.onload = initMap;
     </script>
 </body>
 </html>
 
-lor" stroke-width="2"><path d="M19 7l-.867 12.142A2 2 0 0 1 16.138 21H7.862a2 2 0 0 1-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v3M4 7h16"/></svg>
-        </button>
-    </footer>
-
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyDhNuddcNUbKdvJoKvtkJtca4M4OPwabug",
-            authDomain: "airsoft-hq-e9bcd.firebaseapp.com",
-            projectId: "airsoft-hq-e9bcd",
-            storageBucket: "airsoft-hq-e9bcd.firebasestorage.app",
-            messagingSenderId: "645394629676",
-            appId: "1:645394629676:web:1fb768d52a0152b125fd89"
-        };
-
-        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const auth = firebase.auth();
-
-        let userLocal = {
-            name: localStorage.getItem('as_name'),
-            team: localStorage.getItem('as_team'),
-            id: localStorage.getItem('as_id') || Math.random().toString(36).substring(7)
-        };
-        if(!localStorage.getItem('as_id')) localStorage.setItem('as_id', userLocal.id);
-
-        let activeTeamSelection = null;
-        let editingPlayerId = null;
-        let state = {
-            adminId: null, run: false, time: 600, resp: 30, sA: 0, sB: 0, players: {}, history: [], ts: Date.now()
-        };
-
-        const roomID = new URLSearchParams(window.location.search).get('r') || 'combat_lobby';
-        document.getElementById('roomLabel').innerText = "HQ: " + roomID.replace(/_/g, ' ');
-
-        if(userLocal.name && userLocal.team) {
-            document.getElementById('loginScreen').classList.add('hidden');
-            joinGame();
-        }
-
-        window.pickTeam = (t) => {
-            activeTeamSelection = t;
-            document.getElementById('pickA').style.borderColor = t==='A' ? '#3b82f6' : '#27272a';
-            document.getElementById('pickB').style.borderColor = t==='B' ? '#f97316' : '#27272a';
-        };
-
-        window.confirmEntry = () => {
-            const name = document.getElementById('inputName').value.trim();
-            if(!name || !activeTeamSelection) return;
-            userLocal.name = name; userLocal.team = activeTeamSelection;
-            localStorage.setItem('as_name', name);
-            localStorage.setItem('as_team', activeTeamSelection);
-            document.getElementById('loginScreen').classList.add('hidden');
-            joinGame();
-        };
-
-        async function joinGame() {
-            const ref = db.collection('airsoft_arena').doc(roomID);
-            const doc = await ref.get();
-            let d = doc.exists ? doc.data() : state;
-            
-            if(!d.adminId) d.adminId = userLocal.id;
-            
-            d.players[userLocal.id] = { 
-                name: userLocal.name, 
-                team: userLocal.team, 
-                end: 0, 
-                hits: 0,
-                lastSeen: Date.now() 
-            };
-            d.ts = Date.now();
-            await ref.set(d);
-            connect();
-        }
-
-        async function connect() {
-            try {
-                await auth.signInAnonymously();
-                db.collection('airsoft_arena').doc(roomID).onSnapshot(doc => {
-                    if(doc.exists) {
-                        const d = doc.data();
-                        if(d.ts >= state.ts) state = d;
-                        render();
-                    }
-                }, err => {
-                    document.getElementById('connStatus').className = "w-2.5 h-2.5 rounded-full bg-red-600";
-                });
-            } catch(e) {}
-        }
-
-        window.claimAdmin = () => {
-            state.adminId = userLocal.id;
-            sync();
-        };
-
-        function render() {
-            document.getElementById('txtScoreA').innerText = state.sA;
-            document.getElementById('txtScoreB').innerText = state.sB;
-            const m = Math.floor(state.time/60), s = state.time%60;
-            document.getElementById('txtTimer').innerText = `${m}:${s<10?'0':''}${s}`;
-            document.getElementById('iconPlay').innerHTML = state.run ? '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>' : '<path d="M8 5v14l11-7z"/>';
-            document.getElementById('connStatus').className = "w-2.5 h-2.5 rounded-full bg-green-500 shadow-[0_0_8px_#22c55e]";
-            
-            const isAdmin = state.adminId === userLocal.id;
-            const adminActive = state.players[state.adminId] && (Date.now() - state.players[state.adminId].lastSeen < 15000);
+= state.players[state.adminId] && (Date.now() - state.players[state.adminId].lastSeen < 15000);
 
             if(isAdmin) document.body.classList.add('is-admin'); 
             else document.body.classList.remove('is-admin');
