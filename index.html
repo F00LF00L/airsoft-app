@@ -8,103 +8,95 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="AirsoftHQ">
-    <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#050505">
     
-    <!-- App Icon (Fallback to Emoji for now) -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎯</text></svg>">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎯</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
 
-    <title>Airsoft HQ Pro</title>
+    <title>Airsoft HQ Pro - Squad Leader</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     
     <style>
         body { 
-            background: #050505; 
-            color: #eee; 
-            font-family: system-ui, -apple-system, sans-serif; 
-            height: 100vh; 
-            overflow: hidden;
-            /* מונע בחירת טקסט כדי להרגיש כמו אפליקציה */
-            user-select: none;
-            -webkit-user-select: none;
-            -webkit-tap-highlight-color: transparent;
+            background: #050505; color: #eee; font-family: system-ui, sans-serif; height: 100vh; overflow: hidden;
+            user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
         }
         .glass { background: rgba(20,20,20,0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); }
-        .player-card { height: 90px; border-radius: 1.5rem; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); border: 2px solid transparent; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; }
-        .is-dead { background: #450a0a !important; border-color: #ef4444 !important; transform: scale(0.98); }
-        .is-me { border-color: #fff !important; box-shadow: 0 0 20px rgba(255,255,255,0.1); }
+        .player-card { height: 100px; border-radius: 1.5rem; transition: all 0.3s ease; border: 2px solid transparent; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; }
+        .is-dead { background: #450a0a !important; border-color: #ef4444 !important; }
+        .is-me { border-color: #fff !important; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .modal-bg { background: rgba(0,0,0,0.92); backdrop-filter: blur(20px); z-index: 100; }
+        .modal-bg { background: rgba(0,0,0,0.95); backdrop-filter: blur(20px); z-index: 100; }
         .admin-only { display: none !important; }
         .is-admin .admin-only { display: flex !important; }
-        
-        /* שיפור ויזואלי למסך מלא (iOS) */
+        .drag-ghost { opacity: 0.4; background: #222 !important; border: 2px dashed #444; }
+
         @supports (padding-top: env(safe-area-inset-top)) {
-            header { padding-top: calc(1.25rem + env(safe-area-inset-top)); }
-            footer { padding-bottom: calc(1.5rem + env(safe-area-inset-bottom)); }
+            header { padding-top: calc(1rem + env(safe-area-inset-top)); }
+            footer { padding-bottom: calc(1rem + env(safe-area-inset-bottom)); }
         }
     </style>
 </head>
 <body class="flex flex-col">
 
-    <!-- מסך כניסה -->
+    <!-- Login screen -->
     <div id="loginScreen" class="fixed inset-0 modal-bg flex items-center justify-center p-6">
-        <div class="w-full max-w-md glass p-10 rounded-[3rem] text-center border-white/10">
+        <div class="w-full max-w-md glass p-10 rounded-[3rem] text-center">
             <h2 class="text-4xl font-black mb-2 italic tracking-tighter uppercase">Airsoft HQ</h2>
-            <p class="text-zinc-500 text-sm mb-8">הכנס כינוי ובחר צד</p>
+            <p class="text-zinc-500 text-sm mb-8">הזן כינוי ובחר צוות</p>
             <div class="space-y-4">
-                <input id="inputName" type="text" placeholder="כינוי שחקן..." maxlength="12" 
-                    class="w-full bg-zinc-900 border border-zinc-800 p-5 rounded-2xl text-center text-xl font-bold focus:ring-2 ring-blue-500 outline-none">
+                <input id="inputName" type="text" placeholder="שם שחקן..." maxlength="12" 
+                    class="w-full bg-zinc-900 border border-zinc-800 p-5 rounded-2xl text-center text-xl font-bold outline-none">
                 <div class="grid grid-cols-2 gap-4">
                     <button onclick="pickTeam('A')" id="pickA" class="p-5 rounded-2xl border-2 border-zinc-800 font-black text-blue-500 transition-all">ALPHA</button>
                     <button onclick="pickTeam('B')" id="pickB" class="p-5 rounded-2xl border-2 border-zinc-800 font-black text-orange-500 transition-all">BRAVO</button>
                 </div>
-                <button onclick="confirmEntry()" class="w-full bg-white text-black font-black p-5 rounded-2xl shadow-xl mt-4 active:scale-95 transition-transform text-xl">כניסה לזירה</button>
+                <button onclick="confirmEntry()" class="w-full bg-white text-black font-black p-5 rounded-2xl shadow-xl mt-4 active:scale-95 text-xl">כניסה</button>
             </div>
         </div>
     </div>
 
-    <!-- לוח היסטוריה נסתר -->
+    <!-- History Panel -->
     <div id="historyPanel" class="fixed inset-0 modal-bg hidden flex flex-col p-6 overflow-y-auto no-scrollbar">
         <div class="flex justify-between items-center mb-8">
             <h2 class="text-3xl font-black italic">BATTLE LOG</h2>
             <button onclick="toggleHistory()" class="w-12 h-12 glass rounded-full flex items-center justify-center font-bold text-xl">×</button>
         </div>
-        <div id="historyList" class="space-y-4"></div>
-        <div id="noHistory" class="text-center text-zinc-600 mt-20 hidden">אין תיעוד לסיבובים קודמים</div>
+        <div id="historyList" class="space-y-6"></div>
+        <div id="noHistory" class="text-center text-zinc-600 mt-20 hidden">טרם תועדו סיבובים</div>
     </div>
 
-    <!-- דיאלוג יצירת חדר (אדמין בלבד) -->
-    <div id="roomDialog" class="fixed inset-0 modal-bg hidden flex items-center justify-center p-6">
+    <!-- Edit Player Modal (Admin) -->
+    <div id="editModal" class="fixed inset-0 modal-bg hidden flex items-center justify-center p-6">
         <div class="w-full max-w-sm glass p-8 rounded-[2.5rem]">
-            <h3 class="text-xl font-black mb-6 text-center">צור חדר חדש</h3>
-            <input id="newRoomName" type="text" placeholder="שם החדר (באנגלית)..." class="w-full bg-zinc-900 p-5 rounded-2xl text-center mb-6 font-bold uppercase">
+            <h3 class="text-xl font-black mb-6 text-center">ערוך שחקן</h3>
+            <input id="editPlayerName" type="text" class="w-full bg-zinc-900 p-5 rounded-2xl text-center mb-4 font-bold">
+            <select id="editPlayerTeam" class="w-full bg-zinc-900 p-5 rounded-2xl text-center mb-6 font-bold text-white appearance-none">
+                <option value="A">ALPHA TEAM</option>
+                <option value="B">BRAVO TEAM</option>
+            </select>
             <div class="flex gap-3">
-                <button onclick="document.getElementById('roomDialog').classList.add('hidden')" class="flex-1 p-4 bg-zinc-800 rounded-xl font-bold">ביטול</button>
-                <button onclick="createNewRoom()" class="flex-1 p-4 bg-blue-600 rounded-xl font-bold">צור ועבור</button>
+                <button onclick="closeEdit()" class="flex-1 p-4 bg-zinc-800 rounded-xl font-bold">ביטול</button>
+                <button onclick="saveEdit()" class="flex-1 p-4 bg-blue-600 rounded-xl font-bold">שמור</button>
             </div>
         </div>
     </div>
 
-    <!-- סרגל עליון -->
+    <!-- Header -->
     <header class="p-5 flex justify-between items-center bg-black/40 border-b border-white/5">
         <div class="flex items-center gap-3">
-            <div id="connStatus" class="w-2.5 h-2.5 rounded-full bg-red-600 shadow-[0_0_5px_red]"></div>
+            <div id="connStatus" class="w-2.5 h-2.5 rounded-full bg-red-600"></div>
             <div>
-                <p id="userLabel" class="text-[10px] font-black uppercase text-zinc-500 italic">Connecting...</p>
+                <p id="userLabel" class="text-[10px] font-black uppercase text-zinc-500 italic">Guest</p>
                 <p id="roomLabel" class="text-[9px] font-mono text-zinc-600"></p>
             </div>
         </div>
         <div class="flex gap-2">
-            <button onclick="toggleHistory()" class="w-10 h-10 glass rounded-full flex items-center justify-center border border-zinc-800 active:scale-90">
+            <button onclick="toggleHistory()" class="w-10 h-10 glass rounded-full flex items-center justify-center border border-zinc-800">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            </button>
-            <button onclick="document.getElementById('roomDialog').classList.remove('hidden')" class="admin-only w-10 h-10 glass rounded-full flex items-center justify-center border border-zinc-800">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
             </button>
             <button onclick="copyShareLink()" class="w-10 h-10 glass rounded-full flex items-center justify-center border border-zinc-800">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
@@ -112,55 +104,51 @@
         </div>
     </header>
 
-    <!-- אזור ניקוד מרכזי -->
+    <!-- Score UI -->
     <div class="p-4">
-        <div class="glass p-8 rounded-[3rem] flex justify-between items-center shadow-2xl relative overflow-hidden">
+        <div class="glass p-6 rounded-[2.5rem] flex justify-between items-center relative overflow-hidden">
             <div class="text-center z-10">
                 <span class="text-[9px] font-black text-blue-500 block mb-1">ALPHA</span>
-                <span id="txtScoreA" class="text-6xl font-black italic">0</span>
+                <span id="txtScoreA" class="text-5xl font-black italic">0</span>
             </div>
             
             <div class="flex flex-col items-center z-10">
-                <div id="txtTimer" class="text-4xl font-mono font-black mb-4 tabular-nums text-zinc-200">10:00</div>
-                <button id="btnMainToggle" class="admin-only w-16 h-16 bg-white text-black rounded-full flex items-center justify-center shadow-2xl active:scale-90 transition-all">
-                    <svg id="iconPlay" width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                <div id="txtTimer" class="text-3xl font-mono font-black mb-3 tabular-nums text-zinc-200">10:00</div>
+                <button id="btnMainToggle" class="admin-only w-12 h-12 bg-white text-black rounded-full flex items-center justify-center shadow-xl">
+                    <svg id="iconPlay" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
                 </button>
-                <div id="waitAdmin" class="text-[8px] font-black text-zinc-600 uppercase tracking-[0.2em] admin-hidden">במתנה למנהל...</div>
+                <div id="waitAdmin" class="text-[8px] font-black text-zinc-600 uppercase tracking-widest admin-hidden">Ready</div>
             </div>
 
             <div class="text-center z-10">
                 <span class="text-[9px] font-black text-orange-500 block mb-1">BRAVO</span>
-                <span id="txtScoreB" class="text-6xl font-black italic">0</span>
+                <span id="txtScoreB" class="text-5xl font-black italic">0</span>
             </div>
         </div>
     </div>
 
-    <!-- רשימת שחקנים -->
-    <main class="flex-1 overflow-y-auto px-4 space-y-8 no-scrollbar pb-32">
+    <!-- Battle Grid -->
+    <main class="flex-1 overflow-y-auto px-4 space-y-6 no-scrollbar pb-32">
         <section>
-            <div class="flex justify-between items-center mb-4 px-2">
-                <h2 class="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Alpha Team</h2>
-                <span id="countA" class="text-[10px] font-bold text-blue-500 opacity-50">0 שחקנים</span>
-            </div>
-            <div id="gridAlpha" class="grid grid-cols-2 gap-3"></div>
+            <h2 class="text-[9px] font-black text-zinc-600 uppercase tracking-widest mb-3 px-2">Alpha Detachment</h2>
+            <div id="gridAlpha" class="grid grid-cols-2 gap-3 min-h-[100px]"></div>
         </section>
 
         <section>
-            <div class="flex justify-between items-center mb-4 px-2">
-                <h2 class="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Bravo Team</h2>
-                <span id="countB" class="text-[10px] font-bold text-orange-500 opacity-50">0 שחקנים</span>
-            </div>
-            <div id="gridBravo" class="grid grid-cols-2 gap-3"></div>
+            <h2 class="text-[9px] font-black text-zinc-600 uppercase tracking-widest mb-3 px-2">Bravo Detachment</h2>
+            <div id="gridBravo" class="grid grid-cols-2 gap-3 min-h-[100px]"></div>
         </section>
     </main>
 
-    <!-- סרגל תחתון לאדמין -->
-    <footer class="admin-only fixed bottom-6 inset-x-6 flex gap-3">
-        <button onclick="endRound()" class="flex-1 glass bg-red-500/10 border-red-500/20 text-red-500 h-14 rounded-2xl font-black text-[10px] uppercase tracking-widest">סיים סיבוב ושמור</button>
+    <!-- Admin Footer -->
+    <footer class="admin-only fixed bottom-6 inset-x-6 flex gap-2">
+        <button onclick="resetStats()" class="w-14 h-14 glass bg-zinc-900 border-zinc-800 text-zinc-500 rounded-2xl flex items-center justify-center">
+             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+        </button>
+        <button onclick="endRound()" class="flex-1 glass bg-red-600/20 border-red-500/30 text-red-500 h-14 rounded-2xl font-black text-[11px] uppercase tracking-widest">End Session & Log</button>
     </footer>
 
     <script>
-        // הקוד הלוגי נשאר זהה לגרסת ה-Ultimate, עם שיפורי סנכרון קלים
         const firebaseConfig = {
             apiKey: "AIzaSyDhNuddcNUbKdvJoKvtkJtca4M4OPwabug",
             authDomain: "airsoft-hq-e9bcd.firebaseapp.com",
@@ -182,12 +170,13 @@
         if(!localStorage.getItem('as_id')) localStorage.setItem('as_id', userLocal.id);
 
         let activeTeamSelection = null;
+        let editingPlayerId = null;
         let state = {
             adminId: null, run: false, time: 600, resp: 30, sA: 0, sB: 0, players: {}, history: [], ts: Date.now()
         };
 
-        const roomID = new URLSearchParams(window.location.search).get('r') || 'global_arena';
-        document.getElementById('roomLabel').innerText = "ROOM: " + roomID.toUpperCase();
+        const roomID = new URLSearchParams(window.location.search).get('r') || 'main_arena';
+        document.getElementById('roomLabel').innerText = "HQ: " + roomID.toUpperCase();
 
         if(userLocal.name && userLocal.team) {
             document.getElementById('loginScreen').classList.add('hidden');
@@ -203,8 +192,7 @@
         window.confirmEntry = () => {
             const name = document.getElementById('inputName').value.trim();
             if(!name || !activeTeamSelection) return;
-            userLocal.name = name;
-            userLocal.team = activeTeamSelection;
+            userLocal.name = name; userLocal.team = activeTeamSelection;
             localStorage.setItem('as_name', name);
             localStorage.setItem('as_team', activeTeamSelection);
             document.getElementById('loginScreen').classList.add('hidden');
@@ -212,34 +200,27 @@
         };
 
         async function joinGame() {
-            const ref = db.collection('airsoft_pwa').doc(roomID);
+            const ref = db.collection('airsoft_squads').doc(roomID);
             await ref.get().then(doc => {
                 let d = doc.exists ? doc.data() : state;
                 if(!d.adminId) d.adminId = userLocal.id;
-                d.players[userLocal.id] = { name: userLocal.name, team: userLocal.team, end: 0 };
+                if(!d.players[userLocal.id]) {
+                    d.players[userLocal.id] = { name: userLocal.name, team: userLocal.team, end: 0, hits: 0 };
+                }
                 d.ts = Date.now();
                 ref.set(d);
             });
-            updateUserLabel();
-        }
-
-        function updateUserLabel() {
-            const isAdmin = state.adminId === userLocal.id;
-            const el = document.getElementById('userLabel');
-            el.innerText = (isAdmin ? "👑 " : "") + `${userLocal.name}`;
-            el.className = `text-[10px] font-black uppercase italic ${userLocal.team==='A'?'text-blue-500':'text-orange-500'}`;
-            if(isAdmin) document.body.classList.add('is-admin');
         }
 
         async function connect() {
             try {
                 await auth.signInAnonymously();
-                db.collection('airsoft_pwa').doc(roomID).onSnapshot(doc => {
+                db.collection('airsoft_squads').doc(roomID).onSnapshot(doc => {
                     if(doc.exists) {
                         const d = doc.data();
                         if(d.ts >= state.ts) state = d;
+                        render();
                     }
-                    render();
                 });
             } catch(e) {}
         }
@@ -250,54 +231,98 @@
             const m = Math.floor(state.time/60), s = state.time%60;
             document.getElementById('txtTimer').innerText = `${m}:${s<10?'0':''}${s}`;
             document.getElementById('iconPlay').innerHTML = state.run ? '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>' : '<path d="M8 5v14l11-7z"/>';
-            document.getElementById('waitAdmin').style.display = state.run ? 'none' : 'block';
-            document.getElementById('connStatus').className = "w-2.5 h-2.5 rounded-full bg-green-500 shadow-[0_0_10px_#22c55e]";
+            document.getElementById('connStatus').className = "w-2.5 h-2.5 rounded-full bg-green-500 shadow-[0_0_8px_#22c55e]";
             
-            updateUserLabel();
-            renderGrids();
+            const isAdmin = state.adminId === userLocal.id;
+            if(isAdmin) document.body.classList.add('is-admin');
+            document.getElementById('userLabel').innerText = (isAdmin ? "👑 " : "") + userLocal.name;
+            document.getElementById('userLabel').className = `text-[10px] font-black uppercase italic ${state.players[userLocal.id]?.team==='A'?'text-blue-500':'text-orange-500'}`;
+
+            renderGrids(isAdmin);
         }
 
-        function renderGrids() {
+        function renderGrids(isAdmin) {
             const alpha = document.getElementById('gridAlpha');
             const bravo = document.getElementById('gridBravo');
             alpha.innerHTML = ''; bravo.innerHTML = '';
-            let countA = 0, countB = 0;
             const now = Date.now();
 
             Object.entries(state.players).forEach(([id, p]) => {
                 const isDead = p.end > now;
                 const isMe = id === userLocal.id;
                 const card = document.createElement('div');
-                card.className = `player-card glass ${isDead?'is-dead':''} ${isMe?'is-me':''} ${!state.run?'opacity-40':''}`;
+                card.dataset.id = id;
+                card.className = `player-card glass ${isDead?'is-dead':''} ${isMe?'is-me':''} ${!state.run?'opacity-50':''}`;
                 
                 if(isDead) {
                     const sec = Math.ceil((p.end - now)/1000);
-                    card.innerHTML = `<span class="text-3xl font-black italic tabular-nums">${sec}</span><span class="text-[8px] uppercase opacity-50 mt-1">${p.name}</span>`;
+                    card.innerHTML = `<span class="text-3xl font-black italic">${sec}</span><span class="text-[8px] uppercase opacity-40">${p.name} (${p.hits || 0})</span>`;
                 } else {
                     card.innerHTML = `
-                        <span class="text-[8px] font-black opacity-30 uppercase mb-1">Active</span>
+                        <div class="absolute top-2 right-3 text-[10px] font-black opacity-30 italic">${p.hits || 0} HITS</div>
                         <span class="font-black text-sm uppercase ${p.team==='A'?'text-blue-500':'text-orange-500'}">${p.name}</span>
+                        ${isAdmin ? '<button class="mt-1 text-[8px] font-bold text-zinc-500 uppercase border border-zinc-800 px-2 rounded edit-btn">עריכה</button>' : ''}
                     `;
                 }
 
-                card.onclick = () => {
+                card.onclick = (e) => {
+                    if(e.target.classList.contains('edit-btn')) {
+                        openEdit(id);
+                        return;
+                    }
                     if(!isMe || !state.run || isDead) return;
                     p.end = Date.now() + (state.resp * 1000);
+                    p.hits = (p.hits || 0) + 1;
                     if(p.team === 'A') state.sB++; else state.sA++;
                     sync();
                 };
 
-                if(p.team === 'A') { alpha.appendChild(card); countA++; }
-                else { bravo.appendChild(card); countB++; }
+                if(p.team === 'A') alpha.appendChild(card); else bravo.appendChild(card);
             });
 
-            document.getElementById('countA').innerText = `${countA} שחקנים`;
-            document.getElementById('countB').innerText = `${countB} שחקנים`;
+            if(isAdmin) setupSortable();
         }
+
+        function setupSortable() {
+            const sortOptions = {
+                group: 'players',
+                animation: 150,
+                ghostClass: 'drag-ghost',
+                onEnd: (evt) => {
+                    const id = evt.item.dataset.id;
+                    const newTeam = evt.to.id === 'gridAlpha' ? 'A' : 'B';
+                    if(state.players[id].team !== newTeam) {
+                        state.players[id].team = newTeam;
+                        sync();
+                    }
+                }
+            };
+            if(!window.sortA) window.sortA = Sortable.create(document.getElementById('gridAlpha'), sortOptions);
+            if(!window.sortB) window.sortB = Sortable.create(document.getElementById('gridBravo'), sortOptions);
+        }
+
+        function openEdit(id) {
+            editingPlayerId = id;
+            const p = state.players[id];
+            document.getElementById('editPlayerName').value = p.name;
+            document.getElementById('editPlayerTeam').value = p.team;
+            document.getElementById('editModal').classList.remove('hidden');
+        }
+
+        window.closeEdit = () => { document.getElementById('editModal').classList.add('hidden'); };
+
+        window.saveEdit = () => {
+            if(!editingPlayerId) return;
+            const p = state.players[editingPlayerId];
+            p.name = document.getElementById('editPlayerName').value;
+            p.team = document.getElementById('editPlayerTeam').value;
+            sync();
+            closeEdit();
+        };
 
         function sync() {
             state.ts = Date.now();
-            db.collection('airsoft_pwa').doc(roomID).set(state).catch(()=>{});
+            db.collection('airsoft_squads').doc(roomID).set(state);
         }
 
         window.toggleHistory = () => {
@@ -310,13 +335,31 @@
                     document.getElementById('noHistory').classList.add('hidden');
                     state.history.slice().reverse().forEach(h => {
                         const div = document.createElement('div');
-                        div.className = "glass p-6 rounded-2xl flex justify-between items-center border-white/5";
-                        div.innerHTML = `<div><p class="text-[10px] font-black text-zinc-500 uppercase">Round ${h.round}</p></div>
-                                         <div class="flex items-center gap-4">
-                                            <div class="text-center"><span class="block text-[8px] text-blue-500 font-bold">A</span><span class="text-xl font-black">${h.sA}</span></div>
-                                            <div class="text-center"><span class="block text-[8px] text-orange-500 font-bold">B</span><span class="text-xl font-black">${h.sB}</span></div>
-                                         </div>
-                                         <div class="text-right"><span class="text-[10px] font-black ${h.winner==='ALPHA'?'text-blue-500':'text-orange-500'}">${h.winner} WIN</span></div>`;
+                        div.className = "glass p-6 rounded-3xl border-white/5";
+                        
+                        // יצירת רשימת שחקנים לסיבוב
+                        let playerStats = Object.values(h.playerData || {})
+                            .sort((a,b) => (a.hits||0) - (b.hits||0))
+                            .map(ps => `<div class="flex justify-between text-[11px] font-bold border-b border-white/5 py-1">
+                                <span class="${ps.team==='A'?'text-blue-500':'text-orange-500'}">${ps.name}</span>
+                                <span class="text-zinc-500">${ps.hits||0} Hits</span>
+                            </div>`).join('');
+
+                        div.innerHTML = `
+                            <div class="flex justify-between items-center mb-4">
+                                <span class="text-xs font-black text-zinc-500">ROUND ${h.round}</span>
+                                <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase ${h.winner==='ALPHA'?'bg-blue-500/20 text-blue-500':'bg-orange-500/20 text-orange-500'}">${h.winner} WIN</span>
+                            </div>
+                            <div class="flex justify-around mb-6 text-center">
+                                <div><p class="text-[8px] font-bold text-blue-500">ALPHA</p><p class="text-3xl font-black italic">${h.sA}</p></div>
+                                <div class="w-px h-10 bg-white/10 self-center"></div>
+                                <div><p class="text-[8px] font-bold text-orange-500">BRAVO</p><p class="text-3xl font-black italic">${h.sB}</p></div>
+                            </div>
+                            <div class="bg-black/20 rounded-2xl p-4">
+                                <p class="text-[9px] font-black text-zinc-600 mb-2 uppercase">Squad Debrief</p>
+                                ${playerStats}
+                            </div>
+                        `;
                         list.appendChild(div);
                     });
                 }
@@ -325,28 +368,38 @@
         };
 
         window.endRound = () => {
-            if(!confirm("לסיים סיבוב?")) return;
+            if(!confirm("האם לסיים את המשחק ולתעד את התוצאות?")) return;
             const winner = state.sA > state.sB ? 'ALPHA' : (state.sB > state.sA ? 'BRAVO' : 'DRAW');
-            state.history.push({ round: state.history.length + 1, sA: state.sA, sB: state.sB, winner: winner, ts: Date.now() });
-            state.sA = 0; state.sB = 0; state.time = 600; state.run = false;
-            Object.values(state.players).forEach(p => p.end = 0);
-            sync();
-            toggleHistory();
+            
+            // שמירת נתוני שחקנים ספציפיים לסיבוב זה
+            const currentPlayers = {};
+            Object.entries(state.players).forEach(([id, p]) => {
+                currentPlayers[id] = { name: p.name, team: p.team, hits: p.hits || 0 };
+            });
+
+            state.history.push({
+                round: state.history.length + 1,
+                sA: state.sA, sB: state.sB, winner, ts: Date.now(),
+                playerData: currentPlayers
+            });
+            resetStats(false);
         };
 
-        window.createNewRoom = () => {
-            const name = document.getElementById('newRoomName').value.trim().toLowerCase();
-            if(name) window.location.search = `?r=${name}`;
+        window.resetStats = (ask = true) => {
+            if(ask && !confirm("לאפס את הניקוד והפסילות?")) return;
+            state.sA = 0; state.sB = 0; state.time = 600; state.run = false;
+            Object.values(state.players).forEach(p => { p.end = 0; p.hits = 0; });
+            sync();
         };
 
         window.copyShareLink = () => {
-            const temp = document.createElement('input');
-            document.body.appendChild(temp);
-            temp.value = window.location.href;
-            temp.select();
+            const el = document.createElement('textarea');
+            el.value = window.location.href;
+            document.body.appendChild(el);
+            el.select();
             document.execCommand('copy');
-            document.body.removeChild(temp);
-            alert("קישור הועתק!");
+            document.body.removeChild(el);
+            alert("הקישור לחדר הועתק!");
         };
 
         document.getElementById('btnMainToggle').onclick = () => {
