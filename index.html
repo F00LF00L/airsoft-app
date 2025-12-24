@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Airsoft HQ Pro - Tactical Command</title>
+    <title>Airsoft HQ Pro - Fog of War</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -33,7 +33,6 @@
 
     <div id="map"></div>
 
-    <!-- UI Overlay -->
     <div class="ui-overlay p-4 justify-between">
         
         <!-- Top Bar -->
@@ -41,14 +40,14 @@
             <div class="glass p-3 rounded-2xl min-w-[140px]">
                 <div class="flex items-center mb-1">
                     <div id="gps-indicator" class="w-2 h-2 rounded-full bg-red-500 ml-2"></div>
-                    <span id="player-label" class="text-[10px] font-black uppercase text-zinc-400">CONNECTING...</span>
+                    <span id="player-label" class="text-[10px] font-black uppercase text-zinc-400">מתחבר...</span>
                 </div>
-                <div id="distance-label" class="text-[9px] font-mono text-blue-400 uppercase">BASE: --M</div>
+                <div id="distance-label" class="text-[9px] font-mono text-blue-400 uppercase">מרחק מהבסיס: --M</div>
             </div>
 
             <div class="glass p-3 px-6 rounded-2xl text-center">
                 <div id="display-timer" class="text-2xl font-black italic tracking-tighter tabular-nums">10:00</div>
-                <div id="game-status-label" class="text-[7px] font-bold text-zinc-500 uppercase">PAUSED</div>
+                <div id="game-status-label" class="text-[7px] font-bold text-zinc-500 uppercase">ממתין</div>
             </div>
 
             <div class="flex flex-col gap-2">
@@ -63,27 +62,27 @@
 
         <!-- Geofence Lock Display -->
         <div id="geofence-alert" class="self-center glass px-6 py-4 rounded-3xl text-red-500 font-bold text-[10px] uppercase tracking-widest hidden ui-element text-center">
-            ⚠️ OUT OF RESPAWN ZONE<br>
-            <span class="text-zinc-500 text-[8px] mt-1 block">RETURN TO BASE CIRCLE TO DEPLOY</span>
+            ⚠️ מחוץ לאזור ריספון<br>
+            <span class="text-zinc-500 text-[8px] mt-1 block">חזור לעיגול הבסיס כדי לחזור למשחק</span>
         </div>
 
         <!-- Footer Score & Main Button -->
         <div class="flex flex-col gap-3 ui-element">
             <div class="flex justify-between gap-3 h-14">
                 <div class="flex-1 glass rounded-2xl flex items-center justify-center border-b-2 border-blue-600/30">
-                    <span class="text-blue-500 font-black text-[10px] ml-2">ALPHA</span>
+                    <span class="text-blue-500 font-black text-[10px] ml-2 font-mono">ALPHA</span>
                     <span id="score-a" class="text-xl font-black italic">0</span>
                 </div>
                 <div class="flex-1 glass rounded-2xl flex items-center justify-center border-b-2 border-orange-600/30">
                     <span id="score-b" class="text-xl font-black italic mr-2">0</span>
-                    <span class="text-orange-500 font-black text-[10px]">BRAVO</span>
+                    <span class="text-orange-500 font-black text-[10px] font-mono">BRAVO</span>
                 </div>
             </div>
 
             <button id="main-btn" class="w-full h-20 glass rounded-[2rem] flex flex-col items-center justify-center transition-all active:scale-95 border-2 border-white/10 relative overflow-hidden">
                 <div id="btn-progress" class="absolute left-0 bottom-0 h-1 bg-white/30 transition-all duration-1000" style="width: 0%"></div>
                 <span id="btn-icon" class="text-xl mb-1">🛡️</span>
-                <span id="btn-text" class="text-sm font-black italic uppercase tracking-widest text-white">OPERATIONAL</span>
+                <span id="btn-text" class="text-sm font-black italic uppercase tracking-widest text-white">בפעילות</span>
             </button>
         </div>
     </div>
@@ -92,56 +91,52 @@
     <div id="admin-panel" class="fixed inset-x-0 bottom-0 z-[50] glass rounded-t-[3rem] p-6 panel-slide panel-hidden ui-element max-h-[85vh] overflow-y-auto">
         <div class="w-12 h-1.5 bg-zinc-800 rounded-full mx-auto mb-6"></div>
         
-        <!-- Tabs -->
         <div class="flex gap-4 mb-6 border-b border-white/5 pb-2">
-            <button onclick="switchTab('settings')" class="tab-btn text-xs font-bold uppercase pb-2 border-b-2 border-white" id="tab-settings">Settings</button>
-            <button onclick="switchTab('players')" class="tab-btn text-xs font-bold uppercase pb-2 border-zinc-800 text-zinc-500" id="tab-players">Players</button>
+            <button onclick="switchTab('settings')" class="tab-btn text-xs font-bold uppercase pb-2 border-b-2 border-white" id="tab-settings">הגדרות</button>
+            <button onclick="switchTab('players')" class="tab-btn text-xs font-bold uppercase pb-2 border-zinc-800 text-zinc-500" id="tab-players">שחקנים</button>
         </div>
 
         <!-- Settings Tab -->
         <div id="content-settings" class="tab-content active space-y-6">
             <div id="admin-controls" class="hidden space-y-6">
                 <div class="grid grid-cols-2 gap-3">
-                    <button onclick="toggleGame()" id="game-btn" class="p-4 rounded-2xl bg-white text-black font-black uppercase italic text-xs">Start Match</button>
-                    <button onclick="resetAll()" class="p-4 rounded-2xl bg-red-900/20 text-red-500 font-black uppercase italic text-xs border border-red-500/20">Full Reset</button>
+                    <button onclick="toggleGame()" id="game-btn" class="p-4 rounded-2xl bg-white text-black font-black uppercase italic text-xs">התחל משחק</button>
+                    <button onclick="resetAll()" class="p-4 rounded-2xl bg-red-900/20 text-red-500 font-black uppercase italic text-xs border border-red-500/20">איפוס מלא</button>
                 </div>
 
                 <div class="space-y-2">
-                    <p class="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">Base Deployment</p>
+                    <p class="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">פריסת בסיסים</p>
                     <div class="grid grid-cols-2 gap-3">
-                        <button onclick="prepBase('A')" class="p-3 rounded-xl border border-blue-500/30 text-blue-500 text-[9px] font-black uppercase">Alpha Base</button>
-                        <button onclick="prepBase('B')" class="p-3 rounded-xl border border-orange-500/30 text-orange-500 text-[9px] font-black uppercase">Bravo Base</button>
+                        <button onclick="prepBase('A')" class="p-3 rounded-xl border border-blue-500/30 text-blue-500 text-[9px] font-black uppercase">בסיס אלפא</button>
+                        <button onclick="prepBase('B')" class="p-3 rounded-xl border border-orange-500/30 text-orange-500 text-[9px] font-black uppercase">בסיס בראבו</button>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-6 pt-4 border-t border-white/5">
                     <div>
-                        <p class="text-[9px] text-zinc-500 uppercase font-bold mb-2">Time (Min)</p>
+                        <p class="text-[9px] text-zinc-500 uppercase font-bold mb-2">זמן (דקות)</p>
                         <input type="number" id="inp-time" onchange="pushSettings()" class="w-full bg-zinc-900 p-3 rounded-xl text-center font-bold text-sm" value="10">
                     </div>
                     <div>
-                        <p class="text-[9px] text-zinc-500 uppercase font-bold mb-2">Respawn (Sec)</p>
+                        <p class="text-[9px] text-zinc-500 uppercase font-bold mb-2">ריספון (שניות)</p>
                         <input type="number" id="inp-resp" onchange="pushSettings()" class="w-full bg-zinc-900 p-3 rounded-xl text-center font-bold text-sm" value="30">
                     </div>
                 </div>
             </div>
 
             <div id="not-admin" class="text-center py-6">
-                <p class="text-zinc-500 text-xs mb-4">Command restricted to Admin.</p>
-                <button onclick="claimAdmin()" class="px-8 py-3 bg-zinc-800 rounded-full text-[9px] font-black uppercase tracking-widest">Request Admin</button>
+                <p class="text-zinc-500 text-xs mb-4">ניהול מוגבל לאדמין בלבד.</p>
+                <button onclick="claimAdmin()" class="px-8 py-3 bg-zinc-800 rounded-full text-[9px] font-black uppercase tracking-widest">קבל ניהול</button>
             </div>
         </div>
 
         <!-- Players Tab -->
         <div id="content-players" class="tab-content space-y-4">
-            <div id="player-list" class="space-y-1">
-                <!-- Players injected here -->
-            </div>
+            <div id="player-list" class="space-y-1"></div>
         </div>
     </div>
 
     <script>
-        // --- Firebase & State ---
         const firebaseConfig = {
             apiKey: "AIzaSyDhNuddcNUbKdvJoKvtkJtca4M4OPwabug",
             authDomain: "airsoft-hq-e9bcd.firebaseapp.com",
@@ -152,18 +147,18 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-        const roomID = new URLSearchParams(window.location.search).get('r') || 'field_delta';
+        const roomID = new URLSearchParams(window.location.search).get('r') || 'field_delta_pro';
 
         const userId = localStorage.getItem('as_id') || Math.random().toString(36).substring(7);
         localStorage.setItem('as_id', userId);
         const userName = localStorage.getItem('as_name') || "Operator_" + userId.slice(0,3);
-        const userTeam = localStorage.getItem('as_team') || "A";
+        const userTeam = localStorage.getItem('as_team') || (Math.random() > 0.5 ? 'A' : 'B');
+        localStorage.setItem('as_team', userTeam);
 
         let map, myMarker, playerMarkers = {}, baseMarkers = { A: null, B: null };
         let userPos = null, baseMode = null;
         let state = { adminId: null, players: {}, bases: { A: null, B: null }, time: 600, resp: 30, sA: 0, sB: 0, run: false };
 
-        // --- Core Logic ---
         function init() {
             map = L.map('map', { zoomControl: false, attributionControl: false }).setView([31.7683, 35.2137], 18);
             L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}').addTo(map);
@@ -180,7 +175,6 @@
                 }
             });
 
-            // Listen for data
             db.collection('airsoft_hq').doc(roomID).onSnapshot(doc => {
                 if(doc.exists) {
                     state = doc.data();
@@ -191,14 +185,12 @@
                 }
             });
 
-            // Heartbeat & Initial Join
             setInterval(() => {
                 if(state.players[userId]) {
                     db.collection('airsoft_hq').doc(roomID).update({ [`players.${userId}.ts`]: Date.now() });
                 }
             }, 5000);
 
-            // Time Tick (Admin only handles timer)
             setInterval(() => {
                 if(state.adminId === userId && state.run && state.time > 0) {
                     db.collection('airsoft_hq').doc(roomID).update({ time: firebase.firestore.FieldValue.increment(-1) });
@@ -211,15 +203,25 @@
             document.getElementById('gps-indicator').className = "w-2 h-2 rounded-full bg-green-500 ml-2 shadow-[0_0_8px_green]";
             
             if(!myMarker) {
-                myMarker = L.marker([userPos.lat, userPos.lng], { icon: L.divIcon({ className: 'user-pulse' }) }).addTo(map);
+                myMarker = L.marker([userPos.lat, userPos.lng], { 
+                    icon: L.divIcon({ 
+                        className: 'user-pulse',
+                        style: `border-color: ${userTeam === 'A' ? '#3b82f6' : '#f97316'}`
+                    }) 
+                }).addTo(map);
                 map.setView([userPos.lat, userPos.lng]);
             } else {
                 myMarker.setLatLng([userPos.lat, userPos.lng]);
             }
 
-            // Update DB
             db.collection('airsoft_hq').doc(roomID).update({
-                [`players.${userId}`]: { name: userName, team: userTeam, pos: userPos, ts: Date.now(), end: state.players[userId]?.end || 0 }
+                [`players.${userId}`]: { 
+                    name: userName, 
+                    team: userTeam, 
+                    pos: userPos, 
+                    ts: Date.now(), 
+                    end: state.players[userId]?.end || 0 
+                }
             });
             checkGeofence();
         }
@@ -228,44 +230,48 @@
             const isAdmin = state.adminId === userId;
             document.getElementById('admin-controls').classList.toggle('hidden', !isAdmin);
             document.getElementById('not-admin').classList.toggle('hidden', isAdmin);
-            document.getElementById('player-label').innerText = (isAdmin ? "👑 " : "") + userName;
+            document.getElementById('player-label').innerText = (isAdmin ? "👑 " : "") + userName + ` (${userTeam === 'A' ? 'אלפא' : 'בראבו'})`;
             
-            // UI elements
             document.getElementById('score-a').innerText = state.sA;
             document.getElementById('score-b').innerText = state.sB;
-            document.getElementById('game-btn').innerText = state.run ? "Pause Match" : "Start Match";
+            document.getElementById('game-btn').innerText = state.run ? "עצור משחק" : "התחל משחק";
             document.getElementById('game-btn').className = state.run ? "p-4 rounded-2xl bg-zinc-800 text-white font-black uppercase italic text-xs" : "p-4 rounded-2xl bg-white text-black font-black uppercase italic text-xs";
 
             const m = Math.floor(state.time / 60), s = state.time % 60;
             document.getElementById('display-timer').innerText = `${m}:${s < 10 ? '0' : ''}${s}`;
-            document.getElementById('game-status-label').innerText = state.run ? "IN PROGRESS" : "PAUSED";
+            document.getElementById('game-status-label').innerText = state.run ? "בפעילות" : "מושהה";
 
-            // Player Markers
             const now = Date.now();
             const listEl = document.getElementById('player-list');
             listEl.innerHTML = '';
 
             Object.entries(state.players).forEach(([id, p]) => {
                 const isDead = p.end > now;
+                const isTeammate = p.team === userTeam;
                 
-                // Update List
+                // תמיד לעדכן את הרשימה (כולם רואים את כולם ברשימה)
                 const row = document.createElement('div');
                 row.className = "player-row flex justify-between items-center py-3 px-1";
                 row.innerHTML = `
                     <div class="flex items-center gap-3">
                         <div class="w-1.5 h-1.5 rounded-full ${p.team === 'A' ? 'bg-blue-500' : 'bg-orange-500'}"></div>
-                        <span class="text-[11px] font-bold ${isDead ? 'text-zinc-600 line-through' : 'text-zinc-200'}">${p.name} ${id === state.adminId ? '👑' : ''}</span>
+                        <span class="text-[11px] font-bold ${isDead ? 'text-zinc-600 line-through' : 'text-zinc-200'}">${p.name}</span>
                     </div>
-                    <span class="text-[9px] font-mono text-zinc-500 uppercase">${isDead ? 'Waiting' : 'Active'}</span>
+                    <span class="text-[9px] font-mono text-zinc-500 uppercase">${isDead ? 'ממתין' : 'פעיל'}</span>
                 `;
                 listEl.appendChild(row);
 
-                // Update Map
+                // ניהול מפה: ערפל קרב
                 if(id === userId) return;
-                if(now - p.ts > 30000) {
+
+                // הסתרת אויבים: רק חברים לקבוצה מופיעים על המפה (אלא אם אתה אדמין)
+                const shouldSeeOnMap = isTeammate || isAdmin;
+
+                if(!shouldSeeOnMap || now - p.ts > 30000) {
                     if(playerMarkers[id]) { map.removeLayer(playerMarkers[id]); delete playerMarkers[id]; }
                     return;
                 }
+
                 if(!playerMarkers[id]) {
                     playerMarkers[id] = L.circleMarker([p.pos.lat, p.pos.lng], {
                         radius: 6, color: '#000', weight: 1, fillOpacity: 1,
@@ -276,7 +282,6 @@
                 playerMarkers[id].setStyle({ fillOpacity: isDead ? 0.2 : 1 });
             });
 
-            // Base Circles
             ['A', 'B'].forEach(t => {
                 const b = state.bases[t];
                 if(b) {
@@ -294,23 +299,13 @@
             const myBase = state.bases[userTeam];
             const alertBox = document.getElementById('geofence-alert');
             const btn = document.getElementById('main-btn');
-
             if(!myBase || !userPos) return;
-
             const dist = map.distance([userPos.lat, userPos.lng], [myBase.lat, myBase.lng]);
-            document.getElementById('distance-label').innerText = `BASE: ${Math.round(dist)}M`;
-
+            document.getElementById('distance-label').innerText = `מרחק מהבסיס: ${Math.round(dist)}M`;
             const isDead = state.players[userId]?.end > Date.now();
             if(isDead) {
-                if(dist <= 25) {
-                    btn.classList.remove('is-locked');
-                    alertBox.classList.add('hidden');
-                    document.getElementById('btn-text').innerText = "RESPAWN READY";
-                } else {
-                    btn.classList.add('is-locked');
-                    alertBox.classList.remove('hidden');
-                    document.getElementById('btn-text').innerText = "GO TO BASE";
-                }
+                if(dist <= 25) { btn.classList.remove('is-locked'); alertBox.classList.add('hidden'); document.getElementById('btn-text').innerText = "מוכן לריספון"; }
+                else { btn.classList.add('is-locked'); alertBox.classList.remove('hidden'); document.getElementById('btn-text').innerText = "חזור לבסיס"; }
             }
         }
 
@@ -318,7 +313,6 @@
             const p = state.players[userId];
             const btn = document.getElementById('main-btn');
             const now = Date.now();
-            
             if(p?.end > now) {
                 btn.classList.add('is-dead');
                 document.getElementById('btn-icon').innerText = "💀";
@@ -328,20 +322,17 @@
             } else {
                 btn.classList.remove('is-dead', 'is-locked');
                 document.getElementById('btn-icon').innerText = "🛡️";
-                document.getElementById('btn-text').innerText = "OPERATIONAL";
+                document.getElementById('btn-text').innerText = "בפעילות";
                 document.getElementById('btn-progress').style.width = "0%";
                 document.getElementById('geofence-alert').classList.add('hidden');
             }
         }
 
-        // --- UI Interactions ---
         document.getElementById('main-btn').onclick = () => {
             const now = Date.now();
             const p = state.players[userId];
-            if(p.end > now) {
-                p.end = 0; // Respawned
-            } else {
-                p.end = now + (state.resp * 1000); // Hit
+            if(p.end > now) { p.end = 0; } else {
+                p.end = now + (state.resp * 1000);
                 if(userTeam === 'A') state.sB++; else state.sA++;
             }
             sync();
@@ -356,11 +347,10 @@
             document.getElementById('tab-'+t).classList.replace('text-zinc-500', 'text-zinc-200');
             document.getElementById('content-'+t).classList.add('active');
         }
-
         function claimAdmin() { state.adminId = userId; sync(); }
         function toggleGame() { state.run = !state.run; sync(); }
-        function resetAll() { if(confirm("Reset entire room?")) { state.sA = 0; state.sB = 0; state.bases = {A:null, B:null}; state.run = false; sync(); } }
-        function prepBase(t) { baseMode = t; toggleAdminPanel(); alert("Click location on map to set base."); }
+        function resetAll() { if(confirm("לאפס את כל החדר?")) { state.sA = 0; state.sB = 0; state.bases = {A:null, B:null}; state.run = false; sync(); } }
+        function prepBase(t) { baseMode = t; toggleAdminPanel(); alert("לחץ על המפה כדי לקבוע בסיס."); }
         function pushSettings() { 
             state.time = document.getElementById('inp-time').value * 60;
             state.resp = document.getElementById('inp-resp').value;
@@ -374,24 +364,15 @@
             tempInput.select();
             document.execCommand("copy");
             document.body.removeChild(tempInput);
-            alert("Room link copied to clipboard!");
+            alert("לינק לחדר הועתק!");
         }
-
         function sync() { db.collection('airsoft_hq').doc(roomID).set(state); }
-
         window.onload = init;
     </script>
 </body>
 </html>
 
-T = e.to.id === 'gridAlpha' ? 'A' : 'B';
-                if(state.players[id].team !== newT) { state.players[id].team = newT; sync(); }
-            }};
-            if(!window.sA) window.sA = Sortable.create(document.getElementById('gridAlpha'), opt);
-            if(!window.sB) window.sB = Sortable.create(document.getElementById('gridBravo'), opt);
-        }
-
-        window.openEdit = (id) => {
+dit = (id) => {
             editingPlayerId = id;
             document.getElementById('editPlayerName').value = state.players[id].name;
             document.getElementById('editPlayerTeam').value = state.players[id].team;
