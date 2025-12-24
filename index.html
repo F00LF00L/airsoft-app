@@ -11,7 +11,7 @@
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
 
-    <title>Airsoft HQ Pro - Admin Control</title>
+    <title>Airsoft HQ Pro - Squad Leader</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
@@ -34,9 +34,9 @@
         .drag-ghost { opacity: 0.4; background: #222 !important; border: 2px dashed #444; }
 
         @keyframes pulse-crown {
-            0% { transform: scale(1); opacity: 0.5; }
-            50% { transform: scale(1.2); opacity: 1; }
-            100% { transform: scale(1); opacity: 0.5; }
+            0% { transform: scale(1); opacity: 0.6; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.6; }
         }
         .claim-btn { animation: pulse-crown 2s infinite; }
 
@@ -48,49 +48,69 @@
 </head>
 <body class="flex flex-col">
 
-    <!-- מסך כניסה -->
+    <!-- Login screen -->
     <div id="loginScreen" class="fixed inset-0 modal-bg flex items-center justify-center p-6">
-        <div class="w-full max-w-md glass p-10 rounded-[3rem] text-center">
+        <div class="w-full max-w-md glass p-10 rounded-[3rem] text-center border-white/5">
             <h2 class="text-4xl font-black mb-2 italic tracking-tighter uppercase">Airsoft HQ</h2>
-            <p class="text-zinc-500 text-sm mb-8">הכנס כינוי והצטרף לקרב</p>
+            <p class="text-zinc-500 text-sm mb-8 italic">Squad Registration</p>
             <div class="space-y-4">
-                <input id="inputName" type="text" placeholder="כינוי..." maxlength="12" 
-                    class="w-full bg-zinc-900 border border-zinc-800 p-5 rounded-2xl text-center text-xl font-bold outline-none">
+                <input id="inputName" type="text" placeholder="שם שחקן..." maxlength="12" 
+                    class="w-full bg-zinc-900 border border-zinc-800 p-5 rounded-2xl text-center text-xl font-bold outline-none text-white">
                 <div class="grid grid-cols-2 gap-4">
-                    <button onclick="pickTeam('A')" id="pickA" class="p-5 rounded-2xl border-2 border-zinc-800 font-black text-blue-500">ALPHA</button>
-                    <button onclick="pickTeam('B')" id="pickB" class="p-5 rounded-2xl border-2 border-zinc-800 font-black text-orange-500">BRAVO</button>
+                    <button onclick="pickTeam('A')" id="pickA" class="p-5 rounded-2xl border-2 border-zinc-800 font-black text-blue-500 transition-all">ALPHA</button>
+                    <button onclick="pickTeam('B')" id="pickB" class="p-5 rounded-2xl border-2 border-zinc-800 font-black text-orange-500 transition-all">BRAVO</button>
                 </div>
                 <button onclick="confirmEntry()" class="w-full bg-white text-black font-black p-5 rounded-2xl shadow-xl mt-4 active:scale-95 text-xl">כניסה</button>
             </div>
         </div>
     </div>
 
-    <!-- לוח היסטוריה -->
+    <!-- History Panel -->
     <div id="historyPanel" class="fixed inset-0 modal-bg hidden flex flex-col p-6 overflow-y-auto no-scrollbar">
         <div class="flex justify-between items-center mb-8">
-            <h2 class="text-3xl font-black italic uppercase">Battle Log</h2>
+            <h2 class="text-3xl font-black italic">BATTLE LOG</h2>
             <button onclick="toggleHistory()" class="w-12 h-12 glass rounded-full flex items-center justify-center font-bold text-xl">×</button>
         </div>
         <div id="historyList" class="space-y-6"></div>
-        <div id="noHistory" class="text-center text-zinc-600 mt-20 hidden">אין תיעוד לקרבות</div>
+        <div id="noHistory" class="text-center text-zinc-600 mt-20 hidden">טרם תועדו סיבובים</div>
     </div>
 
-    <!-- דיאלוג חדרים -->
+    <!-- HQ Management (Settings & Rooms) -->
     <div id="roomDialog" class="fixed inset-0 modal-bg hidden flex items-center justify-center p-6">
         <div class="w-full max-w-sm glass p-8 rounded-[2.5rem]">
-            <h3 class="text-xl font-black mb-6 text-center">ניהול זירה</h3>
-            <input id="newRoomName" type="text" placeholder="שם החדר..." class="w-full bg-zinc-900 p-5 rounded-2xl text-center mb-6 font-bold uppercase text-white outline-none">
-            <div class="flex gap-3">
-                <button onclick="document.getElementById('roomDialog').classList.add('hidden')" class="flex-1 p-4 bg-zinc-800 rounded-xl font-bold">ביטול</button>
-                <button onclick="createNewRoom()" class="flex-1 p-4 bg-blue-600 rounded-xl font-bold">עבור חדר</button>
+            <h3 class="text-xl font-black mb-6 text-center italic uppercase">HQ Control</h3>
+            
+            <div class="space-y-6">
+                <!-- Arena Select -->
+                <div>
+                    <label class="text-[10px] font-black text-zinc-500 uppercase mb-2 block">Arena Identity</label>
+                    <input id="newRoomName" type="text" placeholder="שם החדר..." class="w-full bg-zinc-900 p-4 rounded-xl text-center font-bold uppercase text-white outline-none">
+                </div>
+
+                <!-- Match Settings -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-[10px] font-black text-zinc-500 uppercase mb-2 block">Respawn (Sec)</label>
+                        <input id="setRespTime" type="number" value="30" class="w-full bg-zinc-900 p-4 rounded-xl text-center font-bold text-white outline-none">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-black text-zinc-500 uppercase mb-2 block">Match (Min)</label>
+                        <input id="setMatchTime" type="number" value="10" class="w-full bg-zinc-900 p-4 rounded-xl text-center font-bold text-white outline-none">
+                    </div>
+                </div>
+
+                <div class="flex gap-3 pt-4">
+                    <button onclick="document.getElementById('roomDialog').classList.add('hidden')" class="flex-1 p-4 bg-zinc-800 rounded-xl font-bold uppercase text-xs">Close</button>
+                    <button onclick="applySettings()" class="flex-1 p-4 bg-blue-600 rounded-xl font-bold uppercase text-xs shadow-lg shadow-blue-900/20">Apply & Move</button>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- עריכת שחקן -->
+    <!-- Edit Player Modal -->
     <div id="editModal" class="fixed inset-0 modal-bg hidden flex items-center justify-center p-6">
         <div class="w-full max-w-sm glass p-8 rounded-[2.5rem]">
-            <h3 class="text-xl font-black mb-6 text-center italic uppercase">Modify Operative</h3>
+            <h3 class="text-xl font-black mb-6 text-center italic uppercase">Mod Operative</h3>
             <input id="editPlayerName" type="text" class="w-full bg-zinc-900 p-5 rounded-2xl text-center mb-4 font-bold text-white outline-none">
             <select id="editPlayerTeam" class="w-full bg-zinc-900 p-5 rounded-2xl text-center mb-6 font-bold text-white appearance-none outline-none">
                 <option value="A">ALPHA TEAM</option>
@@ -98,10 +118,10 @@
             </select>
             <div class="flex flex-col gap-3">
                 <div class="flex gap-3">
-                    <button onclick="closeEdit()" class="flex-1 p-4 bg-zinc-800 rounded-xl font-bold uppercase text-xs">Cancel</button>
-                    <button onclick="saveEdit()" class="flex-1 p-4 bg-blue-600 rounded-xl font-bold uppercase text-xs">Update</button>
+                    <button onclick="closeEdit()" class="flex-1 p-4 bg-zinc-800 rounded-xl font-bold uppercase text-[10px]">Cancel</button>
+                    <button onclick="saveEdit()" class="flex-1 p-4 bg-blue-600 rounded-xl font-bold uppercase text-[10px]">Save</button>
                 </div>
-                <button onclick="kickPlayer()" class="w-full p-4 bg-red-900/40 text-red-500 rounded-xl font-bold uppercase text-xs border border-red-500/20">Kick from Room</button>
+                <button onclick="kickPlayer()" class="w-full p-4 bg-red-900/30 text-red-500 rounded-xl font-bold uppercase text-[10px] border border-red-500/10">Remove From Squad</button>
             </div>
         </div>
     </div>
@@ -109,11 +129,11 @@
     <!-- Header -->
     <header class="p-5 flex justify-between items-center bg-black/40 border-b border-white/5">
         <div class="flex items-center gap-3">
-            <div id="connStatus" class="w-2.5 h-2.5 rounded-full bg-red-600"></div>
+            <div id="connStatus" class="w-2.5 h-2.5 rounded-full bg-red-600 transition-all duration-500"></div>
             <div class="flex flex-col">
                 <div class="flex items-center gap-2">
                     <p id="userLabel" class="text-[10px] font-black uppercase text-zinc-500 italic">Guest</p>
-                    <button id="btnClaimAdmin" onclick="claimAdmin()" class="hidden claim-btn text-[10px] bg-yellow-500 text-black px-1.5 rounded font-black">TAKE LEAD 👑</button>
+                    <button id="btnClaimAdmin" onclick="claimAdmin()" class="hidden claim-btn text-[9px] bg-yellow-500 text-black px-1.5 py-0.5 rounded font-black uppercase">Claim Lead 👑</button>
                 </div>
                 <p id="roomLabel" class="text-[9px] font-mono text-zinc-600 uppercase"></p>
             </div>
@@ -123,7 +143,7 @@
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
             </button>
             <button onclick="document.getElementById('roomDialog').classList.remove('hidden')" class="admin-only w-10 h-10 glass rounded-full flex items-center justify-center border border-zinc-800">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
             </button>
             <button onclick="copyShareLink()" class="w-10 h-10 glass rounded-full flex items-center justify-center border border-zinc-800">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
@@ -133,23 +153,23 @@
 
     <!-- Score UI -->
     <div class="p-4">
-        <div class="glass p-6 rounded-[2.5rem] flex justify-between items-center relative overflow-hidden">
+        <div class="glass p-6 rounded-[2.5rem] flex justify-between items-center relative overflow-hidden shadow-2xl">
             <div class="text-center z-10">
                 <span class="text-[9px] font-black text-blue-500 block mb-1">ALPHA</span>
-                <span id="txtScoreA" class="text-5xl font-black italic">0</span>
+                <span id="txtScoreA" class="text-5xl font-black italic tabular-nums">0</span>
             </div>
             
             <div class="flex flex-col items-center z-10">
-                <div id="txtTimer" class="text-3xl font-mono font-black mb-3 tabular-nums text-zinc-200">10:00</div>
-                <button id="btnMainToggle" class="admin-only w-12 h-12 bg-white text-black rounded-full flex items-center justify-center shadow-xl">
+                <div id="txtTimer" class="text-3xl font-mono font-black mb-3 tabular-nums text-zinc-100">10:00</div>
+                <button id="btnMainToggle" class="admin-only w-12 h-12 bg-white text-black rounded-full flex items-center justify-center shadow-xl active:scale-90 transition-transform">
                     <svg id="iconPlay" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
                 </button>
-                <div id="waitAdmin" class="text-[8px] font-black text-zinc-600 uppercase tracking-widest admin-hidden">Standby</div>
+                <div id="waitAdmin" class="text-[8px] font-black text-zinc-600 uppercase tracking-widest admin-hidden">Combat Standby</div>
             </div>
 
             <div class="text-center z-10">
                 <span class="text-[9px] font-black text-orange-500 block mb-1">BRAVO</span>
-                <span id="txtScoreB" class="text-5xl font-black italic">0</span>
+                <span id="txtScoreB" class="text-5xl font-black italic tabular-nums">0</span>
             </div>
         </div>
     </div>
@@ -157,23 +177,23 @@
     <!-- Battle Grid -->
     <main class="flex-1 overflow-y-auto px-4 space-y-6 no-scrollbar pb-32">
         <section>
-            <h2 class="text-[9px] font-black text-zinc-600 uppercase tracking-widest mb-3 px-2">Alpha Team</h2>
+            <h2 class="text-[9px] font-black text-zinc-600 uppercase tracking-widest mb-3 px-2">Alpha Platoon</h2>
             <div id="gridAlpha" class="grid grid-cols-2 gap-3 min-h-[50px]"></div>
         </section>
 
         <section>
-            <h2 class="text-[9px] font-black text-zinc-600 uppercase tracking-widest mb-3 px-2">Bravo Team</h2>
+            <h2 class="text-[9px] font-black text-zinc-600 uppercase tracking-widest mb-3 px-2">Bravo Platoon</h2>
             <div id="gridBravo" class="grid grid-cols-2 gap-3 min-h-[50px]"></div>
         </section>
     </main>
 
     <!-- Admin Footer -->
     <footer class="admin-only fixed bottom-6 inset-x-6 flex gap-2">
-        <button onclick="resetStats()" class="w-14 h-14 glass bg-zinc-900 border-zinc-800 text-zinc-500 rounded-2xl flex items-center justify-center">
+        <button onclick="resetStats()" class="w-14 h-14 glass bg-zinc-900 border-zinc-800 text-zinc-500 rounded-2xl flex items-center justify-center active:scale-90 transition-transform">
              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
         </button>
-        <button onclick="endRound()" class="flex-1 glass bg-red-600/20 border-red-500/30 text-red-500 h-14 rounded-2xl font-black text-[11px] uppercase tracking-widest">End Session</button>
-        <button onclick="hardResetRoom()" class="w-14 h-14 glass bg-red-900/20 border-red-500/30 text-red-600 rounded-2xl flex items-center justify-center" title="Hard Reset">
+        <button onclick="endRound()" class="flex-1 glass bg-red-600/20 border-red-500/30 text-red-500 h-14 rounded-2xl font-black text-[11px] uppercase tracking-widest active:scale-[0.98] transition-all">Report End of Combat</button>
+        <button onclick="hardResetRoom()" class="w-14 h-14 glass bg-red-900/10 border-red-500/20 text-red-700 rounded-2xl flex items-center justify-center active:scale-90 transition-transform">
              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 7l-.867 12.142A2 2 0 0 1 16.138 21H7.862a2 2 0 0 1-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v3M4 7h16"/></svg>
         </button>
     </footer>
@@ -205,8 +225,8 @@
             adminId: null, run: false, time: 600, resp: 30, sA: 0, sB: 0, players: {}, history: [], ts: Date.now()
         };
 
-        const roomID = new URLSearchParams(window.location.search).get('r') || 'lobby';
-        document.getElementById('roomLabel').innerText = "Arena: " + roomID;
+        const roomID = new URLSearchParams(window.location.search).get('r') || 'combat_lobby';
+        document.getElementById('roomLabel').innerText = "HQ: " + roomID.replace(/_/g, ' ');
 
         if(userLocal.name && userLocal.team) {
             document.getElementById('loginScreen').classList.add('hidden');
@@ -230,11 +250,10 @@
         };
 
         async function joinGame() {
-            const ref = db.collection('airsoft_rooms').doc(roomID);
+            const ref = db.collection('airsoft_arena').doc(roomID);
             const doc = await ref.get();
             let d = doc.exists ? doc.data() : state;
             
-            // אם אין אדמין בכלל, השחקן הראשון הוא אדמין
             if(!d.adminId) d.adminId = userLocal.id;
             
             d.players[userLocal.id] = { 
@@ -252,23 +271,18 @@
         async function connect() {
             try {
                 await auth.signInAnonymously();
-                db.collection('airsoft_rooms').doc(roomID).onSnapshot(doc => {
+                db.collection('airsoft_arena').doc(roomID).onSnapshot(doc => {
                     if(doc.exists) {
                         const d = doc.data();
                         if(d.ts >= state.ts) state = d;
-                        
-                        // בדיקה אם השחקן הנוכחי נבעט מהחדר
-                        if(state.players && !state.players[userLocal.id] && !document.getElementById('loginScreen').classList.contains('hidden')) {
-                             // שחקן נמחק - אפשר לנתב אותו החוצה או לבקש כניסה מחדש
-                        }
-                        
                         render();
                     }
+                }, err => {
+                    document.getElementById('connStatus').className = "w-2.5 h-2.5 rounded-full bg-red-600";
                 });
             } catch(e) {}
         }
 
-        // פונקציה להשתלטות על האדמין
         window.claimAdmin = () => {
             state.adminId = userLocal.id;
             sync();
@@ -283,17 +297,16 @@
             document.getElementById('connStatus').className = "w-2.5 h-2.5 rounded-full bg-green-500 shadow-[0_0_8px_#22c55e]";
             
             const isAdmin = state.adminId === userLocal.id;
-            const adminExists = state.players[state.adminId] ? true : false;
+            const adminActive = state.players[state.adminId] && (Date.now() - state.players[state.adminId].lastSeen < 15000);
 
             if(isAdmin) document.body.classList.add('is-admin'); 
             else document.body.classList.remove('is-admin');
 
-            // הצגת כפתור השתלטות אם המנהל הנוכחי לא קיים/לא מחובר
-            document.getElementById('btnClaimAdmin').classList.toggle('hidden', isAdmin || adminExists);
+            document.getElementById('btnClaimAdmin').classList.toggle('hidden', isAdmin || adminActive);
 
-            const myData = state.players[userLocal.id];
+            const myP = state.players[userLocal.id];
             document.getElementById('userLabel').innerText = (isAdmin ? "👑 " : "") + userLocal.name;
-            document.getElementById('userLabel').className = `text-[10px] font-black uppercase italic ${myData?.team==='A'?'text-blue-500':'text-orange-500'}`;
+            document.getElementById('userLabel').className = `text-[10px] font-black uppercase italic ${myP?.team==='A'?'text-blue-500':'text-orange-500'}`;
 
             renderGrids(isAdmin);
         }
@@ -316,9 +329,9 @@
                     card.innerHTML = `<span class="text-3xl font-black italic tabular-nums">${sec}</span><span class="text-[8px] uppercase opacity-40">${p.name} (${p.hits || 0})</span>`;
                 } else {
                     card.innerHTML = `
-                        <div class="absolute top-2 right-3 text-[9px] font-black opacity-30 italic">${p.hits || 0} HITS</div>
+                        <div class="absolute top-2 right-3 text-[9px] font-black opacity-30 italic tabular-nums">${p.hits || 0} HITS</div>
                         <span class="font-black text-sm uppercase ${p.team==='A'?'text-blue-500':'text-orange-500'}">${p.name}</span>
-                        ${isAdmin ? '<div class="mt-1 text-[7px] font-bold text-zinc-500 border border-zinc-800 px-1.5 rounded edit-btn">ADMIN</div>' : ''}
+                        ${isAdmin ? '<div class="mt-1 text-[7px] font-bold text-zinc-500 border border-zinc-800 px-1.5 rounded edit-btn">SQUAD LEAD</div>' : ''}
                     `;
                 }
 
@@ -338,13 +351,13 @@
         }
 
         function setupSortable() {
-            const sortOpts = { group: 'players', animation: 150, ghostClass: 'drag-ghost', onEnd: (e) => {
+            const opt = { group: 'players', animation: 150, ghostClass: 'drag-ghost', onEnd: (e) => {
                 const id = e.item.dataset.id;
                 const newT = e.to.id === 'gridAlpha' ? 'A' : 'B';
                 if(state.players[id].team !== newT) { state.players[id].team = newT; sync(); }
             }};
-            if(!window.sA) window.sA = Sortable.create(document.getElementById('gridAlpha'), sortOpts);
-            if(!window.sB) window.sB = Sortable.create(document.getElementById('gridBravo'), sortOpts);
+            if(!window.sA) window.sA = Sortable.create(document.getElementById('gridAlpha'), opt);
+            if(!window.sB) window.sB = Sortable.create(document.getElementById('gridBravo'), opt);
         }
 
         window.openEdit = (id) => {
@@ -360,29 +373,36 @@
             sync(); closeEdit();
         };
         window.kickPlayer = () => {
-            if(confirm("Kick this player?")) {
-                delete state.players[editingPlayerId];
-                sync(); closeEdit();
-            }
+            if(confirm("Kick player?")) { delete state.players[editingPlayerId]; sync(); closeEdit(); }
         };
 
-        window.createNewRoom = () => {
-            const n = document.getElementById('newRoomName').value.trim();
-            if(n) window.location.search = `?r=${n}`;
+        window.applySettings = () => {
+            const roomN = document.getElementById('newRoomName').value.trim();
+            const resp = parseInt(document.getElementById('setRespTime').value);
+            const match = parseInt(document.getElementById('setMatchTime').value);
+            
+            state.resp = resp || 30;
+            state.time = (match || 10) * 60;
+            sync();
+
+            if(roomN && roomN.toLowerCase() !== roomID) {
+                window.location.search = `?r=${roomN.toLowerCase().replace(/\s+/g, '_')}`;
+            } else {
+                document.getElementById('roomDialog').classList.add('hidden');
+            }
         };
 
         window.hardResetRoom = () => {
-            if(confirm("זה ימחק את כל השחקנים וההיסטוריה בחדר הזה. בטוח?")) {
-                state.players = {};
-                state.history = [];
+            if(confirm("כל הנתונים והשחקנים יימחקו מהחדר. בטוח?")) {
+                state.players = {}; state.history = [];
                 state.sA = 0; state.sB = 0; state.time = 600; state.run = false;
-                state.adminId = userLocal.id; // המאפס הופך לאדמין
+                state.adminId = userLocal.id;
                 sync();
-                window.location.reload(); // טעינה מחדש כדי לנקות את הכל
+                window.location.reload();
             }
         };
 
-        function sync() { state.ts = Date.now(); db.collection('airsoft_rooms').doc(roomID).set(state); }
+        function sync() { state.ts = Date.now(); db.collection('airsoft_arena').doc(roomID).set(state); }
 
         window.toggleHistory = () => {
             const p = document.getElementById('historyPanel');
@@ -397,9 +417,9 @@
                         let stats = Object.values(h.playerData || {}).map(ps => `<div class="flex justify-between text-[11px] border-b border-white/5 py-1">
                                 <span class="${ps.team==='A'?'text-blue-500':'text-orange-500'}">${ps.name}</span>
                                 <span class="text-zinc-500">${ps.hits} Hits</span></div>`).join('');
-                        div.innerHTML = `<div class="flex justify-between mb-4"><span class="text-xs font-black text-zinc-600 italic">R${h.round}</span>
+                        div.innerHTML = `<div class="flex justify-between mb-4"><span class="text-xs font-black text-zinc-600">RND ${h.round}</span>
                                 <span class="text-[10px] font-black uppercase ${h.winner==='ALPHA'?'text-blue-500':'text-orange-500'}">${h.winner} WIN</span></div>
-                                <div class="flex justify-around mb-4 text-2xl font-black italic"><span>${h.sA}</span><span class="text-zinc-800">VS</span><span>${h.sB}</span></div>
+                                <div class="flex justify-around mb-4 text-2xl font-black italic"><span>${h.sA}</span><span class="text-zinc-800 text-sm italic">VS</span><span>${h.sB}</span></div>
                                 <div class="bg-black/40 rounded-xl p-3">${stats}</div>`;
                         list.appendChild(div);
                     });
@@ -409,7 +429,7 @@
         };
 
         window.endRound = () => {
-            if(!confirm("End round and save stats?")) return;
+            if(!confirm("סיים סיבוב ושמור דו''ח קרב?")) return;
             const w = state.sA > state.sB ? 'ALPHA' : (state.sB > state.sA ? 'BRAVO' : 'DRAW');
             const pData = {}; Object.entries(state.players).forEach(([id, p]) => pData[id] = { name: p.name, team: p.team, hits: p.hits });
             state.history.push({ round: state.history.length+1, sA: state.sA, sB: state.sB, winner: w, playerData: pData });
@@ -417,8 +437,8 @@
         };
 
         window.resetStats = (ask=true) => {
-            if(ask && !confirm("Reset scores?")) return;
-            state.sA = 0; state.sB = 0; state.time = 600; state.run = false;
+            if(ask && !confirm("איפוס תוצאות וזמנים?")) return;
+            state.sA = 0; state.sB = 0; state.run = false;
             Object.values(state.players).forEach(p => { p.end = 0; p.hits = 0; });
             sync();
         };
@@ -435,12 +455,18 @@
                 state.time--;
                 if(state.time === 0) endRound();
                 render();
-                if(state.time % 10 === 0) {
-                    state.players[userLocal.id].lastSeen = Date.now();
-                    sync();
-                }
+            }
+            // Update presence & periodic sync
+            if(state.players[userLocal.id]) {
+                state.players[userLocal.id].lastSeen = Date.now();
+                if(Date.now() % 5000 < 1000) sync();
             }
         }, 1000);
+
+        window.onload = () => {
+            document.getElementById('setRespTime').value = state.resp;
+            document.getElementById('setMatchTime').value = state.time / 60;
+        };
     </script>
 </body>
 </html>
