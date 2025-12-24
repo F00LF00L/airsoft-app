@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Airsoft HQ Pro - Fog of War</title>
+    <title>Airsoft HQ Pro - Tactical</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -20,34 +20,48 @@
         .ui-element { pointer-events: auto; }
         .glass { background: rgba(15, 15, 15, 0.9); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.1); }
         .is-dead { border-color: #ef4444 !important; box-shadow: 0 0 15px rgba(239, 68, 68, 0.3); }
-        .is-locked { opacity: 0.5; filter: grayscale(1); pointer-events: none; }
+        .is-locked { opacity: 0.3; filter: grayscale(1); cursor: not-allowed; }
         .user-pulse { width: 14px; height: 14px; background: white; border: 3px solid #3b82f6; border-radius: 50%; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
         .panel-slide { transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
         .panel-hidden { transform: translateY(105%); }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-        .player-row { border-bottom: 1px solid rgba(255,255,255,0.05); }
     </style>
 </head>
 <body>
 
+    <!-- Login Screen -->
+    <div id="login-screen" class="fixed inset-0 z-[100] glass flex items-center justify-center p-6 text-center">
+        <div class="max-w-xs w-full space-y-6">
+            <h1 class="text-3xl font-black italic italic tracking-tighter">AIRSOFT HQ</h1>
+            <p class="text-zinc-500 text-xs uppercase tracking-widest font-bold">הזן פרטי לוחם</p>
+            <input type="text" id="join-name" placeholder="שם שחקן" class="w-full bg-zinc-900 border border-zinc-800 p-4 rounded-2xl text-center font-bold">
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="setJoinTeam('A')" id="btn-team-a" class="p-4 rounded-2xl border-2 border-blue-600/50 text-blue-500 font-black">ALPHA</button>
+                <button onclick="setJoinTeam('B')" id="btn-team-b" class="p-4 rounded-2xl border-2 border-zinc-800 text-zinc-500 font-black">BRAVO</button>
+            </div>
+            <button onclick="performJoin()" class="w-full bg-white text-black p-4 rounded-2xl font-black uppercase tracking-widest text-sm">כניסה למערכת</button>
+        </div>
+    </div>
+
     <div id="map"></div>
 
+    <!-- UI Overlay -->
     <div class="ui-overlay p-4 justify-between">
         
-        <!-- Top Bar -->
+        <!-- Header -->
         <div class="flex justify-between items-start ui-element">
             <div class="glass p-3 rounded-2xl min-w-[140px]">
                 <div class="flex items-center mb-1">
                     <div id="gps-indicator" class="w-2 h-2 rounded-full bg-red-500 ml-2"></div>
-                    <span id="player-label" class="text-[10px] font-black uppercase text-zinc-400">מתחבר...</span>
+                    <span id="player-label" class="text-[10px] font-black uppercase text-zinc-400 italic">שחקן מנותק</span>
                 </div>
-                <div id="distance-label" class="text-[9px] font-mono text-blue-400 uppercase">מרחק מהבסיס: --M</div>
+                <div id="distance-label" class="text-[9px] font-mono text-blue-400 uppercase">BASE: --M</div>
             </div>
 
             <div class="glass p-3 px-6 rounded-2xl text-center">
                 <div id="display-timer" class="text-2xl font-black italic tracking-tighter tabular-nums">10:00</div>
-                <div id="game-status-label" class="text-[7px] font-bold text-zinc-500 uppercase">ממתין</div>
+                <div id="game-status-label" class="text-[7px] font-bold text-zinc-500 uppercase">המתנה</div>
             </div>
 
             <div class="flex flex-col gap-2">
@@ -60,35 +74,35 @@
             </div>
         </div>
 
-        <!-- Geofence Lock Display -->
+        <!-- Alert -->
         <div id="geofence-alert" class="self-center glass px-6 py-4 rounded-3xl text-red-500 font-bold text-[10px] uppercase tracking-widest hidden ui-element text-center">
             ⚠️ מחוץ לאזור ריספון<br>
-            <span class="text-zinc-500 text-[8px] mt-1 block">חזור לעיגול הבסיס כדי לחזור למשחק</span>
+            <span class="text-zinc-500 text-[8px] mt-1 block italic">חזור לבסיס כדי להפעיל מחדש</span>
         </div>
 
-        <!-- Footer Score & Main Button -->
+        <!-- Footer -->
         <div class="flex flex-col gap-3 ui-element">
             <div class="flex justify-between gap-3 h-14">
                 <div class="flex-1 glass rounded-2xl flex items-center justify-center border-b-2 border-blue-600/30">
-                    <span class="text-blue-500 font-black text-[10px] ml-2 font-mono">ALPHA</span>
+                    <span class="text-blue-500 font-black text-[10px] ml-2">ALPHA</span>
                     <span id="score-a" class="text-xl font-black italic">0</span>
                 </div>
                 <div class="flex-1 glass rounded-2xl flex items-center justify-center border-b-2 border-orange-600/30">
                     <span id="score-b" class="text-xl font-black italic mr-2">0</span>
-                    <span class="text-orange-500 font-black text-[10px] font-mono">BRAVO</span>
+                    <span class="text-orange-500 font-black text-[10px]">BRAVO</span>
                 </div>
             </div>
 
             <button id="main-btn" class="w-full h-20 glass rounded-[2rem] flex flex-col items-center justify-center transition-all active:scale-95 border-2 border-white/10 relative overflow-hidden">
                 <div id="btn-progress" class="absolute left-0 bottom-0 h-1 bg-white/30 transition-all duration-1000" style="width: 0%"></div>
                 <span id="btn-icon" class="text-xl mb-1">🛡️</span>
-                <span id="btn-text" class="text-sm font-black italic uppercase tracking-widest text-white">בפעילות</span>
+                <span id="btn-text" class="text-sm font-black italic uppercase tracking-widest">בפעילות</span>
             </button>
         </div>
     </div>
 
-    <!-- Admin & Management Panel -->
-    <div id="admin-panel" class="fixed inset-x-0 bottom-0 z-[50] glass rounded-t-[3rem] p-6 panel-slide panel-hidden ui-element max-h-[85vh] overflow-y-auto">
+    <!-- Admin Panel -->
+    <div id="admin-panel" class="fixed inset-x-0 bottom-0 z-[110] glass rounded-t-[3rem] p-6 panel-slide panel-hidden ui-element max-h-[85vh] overflow-y-auto">
         <div class="w-12 h-1.5 bg-zinc-800 rounded-full mx-auto mb-6"></div>
         
         <div class="flex gap-4 mb-6 border-b border-white/5 pb-2">
@@ -96,43 +110,41 @@
             <button onclick="switchTab('players')" class="tab-btn text-xs font-bold uppercase pb-2 border-zinc-800 text-zinc-500" id="tab-players">שחקנים</button>
         </div>
 
-        <!-- Settings Tab -->
         <div id="content-settings" class="tab-content active space-y-6">
-            <div id="admin-controls" class="hidden space-y-6">
+            <div id="admin-controls" class="hidden space-y-4">
                 <div class="grid grid-cols-2 gap-3">
-                    <button onclick="toggleGame()" id="game-btn" class="p-4 rounded-2xl bg-white text-black font-black uppercase italic text-xs">התחל משחק</button>
-                    <button onclick="resetAll()" class="p-4 rounded-2xl bg-red-900/20 text-red-500 font-black uppercase italic text-xs border border-red-500/20">איפוס מלא</button>
+                    <button onclick="toggleGame()" id="game-btn" class="p-4 rounded-2xl bg-white text-black font-black uppercase italic text-xs">התחל/עצור</button>
+                    <button onclick="resetMatch()" class="p-4 rounded-2xl bg-zinc-800 text-white font-black uppercase italic text-xs">איפוס משחק</button>
                 </div>
+                
+                <button onclick="resetRoom()" class="w-full p-4 rounded-2xl bg-red-900/20 text-red-500 font-black uppercase italic text-xs border border-red-500/20">איפוס חדר ופינוי שחקנים</button>
 
-                <div class="space-y-2">
-                    <p class="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">פריסת בסיסים</p>
+                <div class="space-y-2 pt-4">
+                    <p class="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">קביעת נקודת בסיס</p>
                     <div class="grid grid-cols-2 gap-3">
-                        <button onclick="prepBase('A')" class="p-3 rounded-xl border border-blue-500/30 text-blue-500 text-[9px] font-black uppercase">בסיס אלפא</button>
-                        <button onclick="prepBase('B')" class="p-3 rounded-xl border border-orange-500/30 text-orange-500 text-[9px] font-black uppercase">בסיס בראבו</button>
+                        <button onclick="prepBase('A')" class="p-3 rounded-xl border border-blue-500/30 text-blue-500 text-[9px] font-black uppercase">Alpha Base</button>
+                        <button onclick="prepBase('B')" class="p-3 rounded-xl border border-orange-500/30 text-orange-500 text-[9px] font-black uppercase">Bravo Base</button>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-6 pt-4 border-t border-white/5">
                     <div>
-                        <p class="text-[9px] text-zinc-500 uppercase font-bold mb-2">זמן (דקות)</p>
+                        <p class="text-[9px] text-zinc-500 uppercase font-bold mb-2">זמן משחק</p>
                         <input type="number" id="inp-time" onchange="pushSettings()" class="w-full bg-zinc-900 p-3 rounded-xl text-center font-bold text-sm" value="10">
                     </div>
                     <div>
-                        <p class="text-[9px] text-zinc-500 uppercase font-bold mb-2">ריספון (שניות)</p>
+                        <p class="text-[9px] text-zinc-500 uppercase font-bold mb-2">ריספון (שנייה)</p>
                         <input type="number" id="inp-resp" onchange="pushSettings()" class="w-full bg-zinc-900 p-3 rounded-xl text-center font-bold text-sm" value="30">
                     </div>
                 </div>
             </div>
-
             <div id="not-admin" class="text-center py-6">
-                <p class="text-zinc-500 text-xs mb-4">ניהול מוגבל לאדמין בלבד.</p>
                 <button onclick="claimAdmin()" class="px-8 py-3 bg-zinc-800 rounded-full text-[9px] font-black uppercase tracking-widest">קבל ניהול</button>
             </div>
         </div>
 
-        <!-- Players Tab -->
         <div id="content-players" class="tab-content space-y-4">
-            <div id="player-list" class="space-y-1"></div>
+            <div id="player-list" class="space-y-2"></div>
         </div>
     </div>
 
@@ -147,19 +159,33 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-        const roomID = new URLSearchParams(window.location.search).get('r') || 'field_delta_pro';
+        const roomID = new URLSearchParams(window.location.search).get('r') || 'delta_v4';
 
-        const userId = localStorage.getItem('as_id') || Math.random().toString(36).substring(7);
+        let userId = localStorage.getItem('as_id') || Math.random().toString(36).substring(7);
         localStorage.setItem('as_id', userId);
-        const userName = localStorage.getItem('as_name') || "Operator_" + userId.slice(0,3);
-        const userTeam = localStorage.getItem('as_team') || (Math.random() > 0.5 ? 'A' : 'B');
-        localStorage.setItem('as_team', userTeam);
 
+        let myTeam = 'A';
         let map, myMarker, playerMarkers = {}, baseMarkers = { A: null, B: null };
         let userPos = null, baseMode = null;
-        let state = { adminId: null, players: {}, bases: { A: null, B: null }, time: 600, resp: 30, sA: 0, sB: 0, run: false };
+        let state = { adminId: null, players: {}, bases: { A: null, B: null }, time: 600, resp: 30, sA: 0, sB: 0, run: false, version: 1 };
 
-        function init() {
+        // --- Auth & Join ---
+        function setJoinTeam(t) {
+            myTeam = t;
+            document.getElementById('btn-team-a').className = t==='A' ? 'p-4 rounded-2xl border-2 border-blue-600 bg-blue-600/10 text-blue-500 font-black' : 'p-4 rounded-2xl border-2 border-zinc-800 text-zinc-500 font-black';
+            document.getElementById('btn-team-b').className = t==='B' ? 'p-4 rounded-2xl border-2 border-orange-600 bg-orange-600/10 text-orange-500 font-black' : 'p-4 rounded-2xl border-2 border-zinc-800 text-zinc-500 font-black';
+        }
+
+        function performJoin() {
+            const name = document.getElementById('join-name').value.trim();
+            if(!name) return alert("הכנס שם לוחם");
+            localStorage.setItem('as_name', name);
+            localStorage.setItem('as_team', myTeam);
+            document.getElementById('login-screen').classList.add('hidden');
+            initApp();
+        }
+
+        function initApp() {
             map = L.map('map', { zoomControl: false, attributionControl: false }).setView([31.7683, 35.2137], 18);
             L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}').addTo(map);
 
@@ -177,7 +203,20 @@
 
             db.collection('airsoft_hq').doc(roomID).onSnapshot(doc => {
                 if(doc.exists) {
+                    const oldVer = state.version;
                     state = doc.data();
+                    
+                    // Force refresh if version bumped (room reset)
+                    if(state.version > oldVer && oldVer !== undefined) {
+                        localStorage.clear();
+                        window.location.reload();
+                    }
+                    
+                    // Check if Admin moved me
+                    if(state.players[userId] && state.players[userId].team !== myTeam) {
+                        myTeam = state.players[userId].team;
+                    }
+                    
                     render();
                 } else {
                     state.adminId = userId;
@@ -204,10 +243,7 @@
             
             if(!myMarker) {
                 myMarker = L.marker([userPos.lat, userPos.lng], { 
-                    icon: L.divIcon({ 
-                        className: 'user-pulse',
-                        style: `border-color: ${userTeam === 'A' ? '#3b82f6' : '#f97316'}`
-                    }) 
+                    icon: L.divIcon({ className: 'user-pulse' }) 
                 }).addTo(map);
                 map.setView([userPos.lat, userPos.lng]);
             } else {
@@ -216,8 +252,8 @@
 
             db.collection('airsoft_hq').doc(roomID).update({
                 [`players.${userId}`]: { 
-                    name: userName, 
-                    team: userTeam, 
+                    name: localStorage.getItem('as_name'), 
+                    team: myTeam, 
                     pos: userPos, 
                     ts: Date.now(), 
                     end: state.players[userId]?.end || 0 
@@ -228,18 +264,16 @@
 
         function render() {
             const isAdmin = state.adminId === userId;
+            const myName = localStorage.getItem('as_name');
             document.getElementById('admin-controls').classList.toggle('hidden', !isAdmin);
             document.getElementById('not-admin').classList.toggle('hidden', isAdmin);
-            document.getElementById('player-label').innerText = (isAdmin ? "👑 " : "") + userName + ` (${userTeam === 'A' ? 'אלפא' : 'בראבו'})`;
+            document.getElementById('player-label').innerText = (isAdmin ? "👑 " : "") + myName + ` [${myTeam}]`;
             
             document.getElementById('score-a').innerText = state.sA;
             document.getElementById('score-b').innerText = state.sB;
-            document.getElementById('game-btn').innerText = state.run ? "עצור משחק" : "התחל משחק";
-            document.getElementById('game-btn').className = state.run ? "p-4 rounded-2xl bg-zinc-800 text-white font-black uppercase italic text-xs" : "p-4 rounded-2xl bg-white text-black font-black uppercase italic text-xs";
 
             const m = Math.floor(state.time / 60), s = state.time % 60;
             document.getElementById('display-timer').innerText = `${m}:${s < 10 ? '0' : ''}${s}`;
-            document.getElementById('game-status-label').innerText = state.run ? "בפעילות" : "מושהה";
 
             const now = Date.now();
             const listEl = document.getElementById('player-list');
@@ -247,38 +281,34 @@
 
             Object.entries(state.players).forEach(([id, p]) => {
                 const isDead = p.end > now;
-                const isTeammate = p.team === userTeam;
+                const isTeammate = p.team === myTeam;
                 
-                // תמיד לעדכן את הרשימה (כולם רואים את כולם ברשימה)
+                // List Row
                 const row = document.createElement('div');
-                row.className = "player-row flex justify-between items-center py-3 px-1";
+                row.className = "flex justify-between items-center p-3 rounded-xl bg-white/5 border border-white/5";
                 row.innerHTML = `
                     <div class="flex items-center gap-3">
-                        <div class="w-1.5 h-1.5 rounded-full ${p.team === 'A' ? 'bg-blue-500' : 'bg-orange-500'}"></div>
-                        <span class="text-[11px] font-bold ${isDead ? 'text-zinc-600 line-through' : 'text-zinc-200'}">${p.name}</span>
+                        <div class="w-2 h-2 rounded-full ${p.team === 'A' ? 'bg-blue-500' : 'bg-orange-500'}"></div>
+                        <span class="text-xs font-bold">${p.name}</span>
                     </div>
-                    <span class="text-[9px] font-mono text-zinc-500 uppercase">${isDead ? 'ממתין' : 'פעיל'}</span>
+                    ${isAdmin ? `<button onclick="movePlayer('${id}', '${p.team === 'A' ? 'B' : 'A'}')" class="text-[8px] bg-white/10 px-3 py-1 rounded-lg uppercase font-bold">העבר קבוצה</button>` : ''}
                 `;
                 listEl.appendChild(row);
 
-                // ניהול מפה: ערפל קרב
+                // Map Fog of War
                 if(id === userId) return;
-
-                // הסתרת אויבים: רק חברים לקבוצה מופיעים על המפה (אלא אם אתה אדמין)
-                const shouldSeeOnMap = isTeammate || isAdmin;
-
-                if(!shouldSeeOnMap || now - p.ts > 30000) {
+                const shouldSee = isTeammate || isAdmin;
+                if(!shouldSee || now - p.ts > 30000) {
                     if(playerMarkers[id]) { map.removeLayer(playerMarkers[id]); delete playerMarkers[id]; }
                     return;
                 }
-
                 if(!playerMarkers[id]) {
                     playerMarkers[id] = L.circleMarker([p.pos.lat, p.pos.lng], {
                         radius: 6, color: '#000', weight: 1, fillOpacity: 1,
                         fillColor: p.team === 'A' ? '#3b82f6' : '#f97316'
-                    }).addTo(map).bindTooltip(p.name, { permanent: true, direction: 'top', className: 'bg-transparent border-none text-[8px] text-white shadow-none font-bold' });
+                    }).addTo(map).bindTooltip(p.name, { permanent: true, direction: 'top', className: 'bg-transparent border-none text-[7px] text-white shadow-none font-bold' });
                 }
-                if(p.pos) playerMarkers[id].setLatLng([p.pos.lat, p.pos.lng]);
+                playerMarkers[id].setLatLng([p.pos.lat, p.pos.lng]);
                 playerMarkers[id].setStyle({ fillOpacity: isDead ? 0.2 : 1 });
             });
 
@@ -286,7 +316,7 @@
                 const b = state.bases[t];
                 if(b) {
                     if(!baseMarkers[t]) {
-                        baseMarkers[t] = L.circle([b.lat, b.lng], { radius: 25, color: t==='A'?'#3b82f6':'#f97316', weight: 2, fillOpacity: 0.1 }).addTo(map);
+                        baseMarkers[t] = L.circle([b.lat, b.lng], { radius: 12, color: t==='A'?'#3b82f6':'#f97316', weight: 2, fillOpacity: 0.15 }).addTo(map);
                     }
                     baseMarkers[t].setLatLng([b.lat, b.lng]);
                 }
@@ -296,16 +326,27 @@
         }
 
         function checkGeofence() {
-            const myBase = state.bases[userTeam];
+            const myBase = state.bases[myTeam];
             const alertBox = document.getElementById('geofence-alert');
             const btn = document.getElementById('main-btn');
             if(!myBase || !userPos) return;
+
             const dist = map.distance([userPos.lat, userPos.lng], [myBase.lat, myBase.lng]);
-            document.getElementById('distance-label').innerText = `מרחק מהבסיס: ${Math.round(dist)}M`;
+            document.getElementById('distance-label').innerText = `DIST: ${Math.round(dist)}M`;
+
             const isDead = state.players[userId]?.end > Date.now();
             if(isDead) {
-                if(dist <= 25) { btn.classList.remove('is-locked'); alertBox.classList.add('hidden'); document.getElementById('btn-text').innerText = "מוכן לריספון"; }
-                else { btn.classList.add('is-locked'); alertBox.classList.remove('hidden'); document.getElementById('btn-text').innerText = "חזור לבסיס"; }
+                if(dist <= 15) { // Smaller radius 15m
+                    btn.disabled = false;
+                    btn.classList.remove('is-locked');
+                    alertBox.classList.add('hidden');
+                    document.getElementById('btn-text').innerText = "מוכן לריספון";
+                } else {
+                    btn.disabled = true;
+                    btn.classList.add('is-locked');
+                    alertBox.classList.remove('hidden');
+                    document.getElementById('btn-text').innerText = "חזור לבסיס";
+                }
             }
         }
 
@@ -313,6 +354,7 @@
             const p = state.players[userId];
             const btn = document.getElementById('main-btn');
             const now = Date.now();
+            
             if(p?.end > now) {
                 btn.classList.add('is-dead');
                 document.getElementById('btn-icon').innerText = "💀";
@@ -320,6 +362,7 @@
                 document.getElementById('btn-progress').style.width = `${perc}%`;
                 checkGeofence();
             } else {
+                btn.disabled = false;
                 btn.classList.remove('is-dead', 'is-locked');
                 document.getElementById('btn-icon').innerText = "🛡️";
                 document.getElementById('btn-text').innerText = "בפעילות";
@@ -328,16 +371,20 @@
             }
         }
 
+        // --- Interactions ---
         document.getElementById('main-btn').onclick = () => {
             const now = Date.now();
             const p = state.players[userId];
-            if(p.end > now) { p.end = 0; } else {
+            if(p.end > now) {
+                p.end = 0;
+            } else {
                 p.end = now + (state.resp * 1000);
-                if(userTeam === 'A') state.sB++; else state.sA++;
+                if(myTeam === 'A') state.sB++; else state.sA++;
             }
             sync();
         };
 
+        function movePlayer(id, team) { db.collection('airsoft_hq').doc(roomID).update({ [`players.${id}.team`]: team }); }
         function toggleAdminPanel() { document.getElementById('admin-panel').classList.toggle('panel-hidden'); }
         function switchTab(t) {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.replace('border-white', 'border-zinc-800'));
@@ -347,79 +394,39 @@
             document.getElementById('tab-'+t).classList.replace('text-zinc-500', 'text-zinc-200');
             document.getElementById('content-'+t).classList.add('active');
         }
+
         function claimAdmin() { state.adminId = userId; sync(); }
         function toggleGame() { state.run = !state.run; sync(); }
-        function resetAll() { if(confirm("לאפס את כל החדר?")) { state.sA = 0; state.sB = 0; state.bases = {A:null, B:null}; state.run = false; sync(); } }
-        function prepBase(t) { baseMode = t; toggleAdminPanel(); alert("לחץ על המפה כדי לקבוע בסיס."); }
+        function prepBase(t) { baseMode = t; toggleAdminPanel(); alert("לחץ על המפה לקביעת הבסיס"); }
         function pushSettings() { 
             state.time = document.getElementById('inp-time').value * 60;
             state.resp = document.getElementById('inp-resp').value;
             sync();
         }
+
+        function resetMatch() {
+            if(!confirm("לאפס טיימר וניקוד?")) return;
+            state.sA = 0; state.sB = 0; state.time = document.getElementById('inp-time').value * 60; state.run = false;
+            sync();
+        }
+
+        function resetRoom() {
+            if(!confirm("זה ינתק את כל השחקנים וינקה את המפה. להמשיך?")) return;
+            state = { version: (state.version || 1) + 1, adminId: userId, players: {}, bases: { A: null, B: null }, time: 600, resp: 30, sA: 0, sB: 0, run: false };
+            sync();
+        }
+
         function shareRoom() {
             const url = window.location.href.split('?')[0] + '?r=' + roomID;
-            const tempInput = document.createElement("input");
-            document.body.appendChild(tempInput);
-            tempInput.value = url;
-            tempInput.select();
-            document.execCommand("copy");
-            document.body.removeChild(tempInput);
-            alert("לינק לחדר הועתק!");
+            navigator.clipboard.writeText(url).then(() => alert("לינק הועתק"));
         }
+
         function sync() { db.collection('airsoft_hq').doc(roomID).set(state); }
-        window.onload = init;
     </script>
 </body>
 </html>
 
-dit = (id) => {
-            editingPlayerId = id;
-            document.getElementById('editPlayerName').value = state.players[id].name;
-            document.getElementById('editPlayerTeam').value = state.players[id].team;
-            document.getElementById('editModal').classList.remove('hidden');
-        };
-        window.closeEdit = () => document.getElementById('editModal').classList.add('hidden');
-        window.saveEdit = () => {
-            state.players[editingPlayerId].name = document.getElementById('editPlayerName').value;
-            state.players[editingPlayerId].team = document.getElementById('editPlayerTeam').value;
-            sync(); closeEdit();
-        };
-        window.kickPlayer = () => {
-            if(confirm("Kick player?")) { delete state.players[editingPlayerId]; sync(); closeEdit(); }
-        };
-
-        window.applySettings = () => {
-            const roomN = document.getElementById('newRoomName').value.trim();
-            const resp = parseInt(document.getElementById('setRespTime').value);
-            const match = parseInt(document.getElementById('setMatchTime').value);
-            
-            state.resp = resp || 30;
-            state.time = (match || 10) * 60;
-            sync();
-
-            if(roomN && roomN.toLowerCase() !== roomID) {
-                window.location.search = `?r=${roomN.toLowerCase().replace(/\s+/g, '_')}`;
-            } else {
-                document.getElementById('roomDialog').classList.add('hidden');
-            }
-        };
-
-        window.hardResetRoom = () => {
-            if(confirm("כל הנתונים והשחקנים יימחקו מהחדר. בטוח?")) {
-                state.players = {}; state.history = [];
-                state.sA = 0; state.sB = 0; state.time = 600; state.run = false;
-                state.adminId = userLocal.id;
-                sync();
-                window.location.reload();
-            }
-        };
-
-        function sync() { state.ts = Date.now(); db.collection('airsoft_arena').doc(roomID).set(state); }
-
-        window.toggleHistory = () => {
-            const p = document.getElementById('historyPanel');
-            if(p.classList.contains('hidden')) {
-                const list = document.getElementById('historyList'); list.innerHTML = '';
+lementById('historyList'); list.innerHTML = '';
                 if(state.history.length === 0) document.getElementById('noHistory').classList.remove('hidden');
                 else {
                     document.getElementById('noHistory').classList.add('hidden');
